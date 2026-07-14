@@ -319,6 +319,18 @@ postgresql+asyncpg://pertinho:pertinho_local_dev@127.0.0.1:5433/pertinho
 - Dependência assíncrona `get_session` implementada com fechamento automático
   da sessão.
 - Conectividade real validada com `SELECT 1` pelo engine e pela sessão.
+- Base declarativa compartilhada criada, ainda sem modelos ou tabelas de
+  negócio.
+- Alembic configurado para usar conexão assíncrona e `DATABASE_URL` via
+  `Settings`.
+- Revisão inicial vazia `0001` aplicada ao PostgreSQL local.
+
+### Comandos de migrations
+
+```bash
+poetry run alembic upgrade head
+poetry run alembic current
+```
 
 ### Verificação atual
 
@@ -329,6 +341,6 @@ suíte volta a ser coletada e executada integralmente.
 
 ## Próximo recorte
 
-A conexão assíncrona está concluída. A próxima tarefa da Fase 2 ainda deve ter
-seu recorte técnico apresentado e aprovado antes da implementação. Modelos e
-migrations permanecem fora do escopo até uma aprovação específica.
+A infraestrutura assíncrona de migrations está concluída. Qualquer modelagem
+física ainda deve ter seu recorte técnico apresentado e aprovado antes da
+implementação.

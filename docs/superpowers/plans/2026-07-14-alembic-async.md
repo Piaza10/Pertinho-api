@@ -29,7 +29,7 @@
 - Consome: infraestrutura de conexão existente em `app.database`.
 - Produz: `app.database.Base`, subclasse de `sqlalchemy.orm.DeclarativeBase`, com `Base.metadata` inicialmente vazio.
 
-- [ ] **Passo 1: Escrever o teste que falha**
+- [x] **Passo 1: Escrever o teste que falha**
 
 Adicionar ao final de `tests/test_database.py`:
 
@@ -43,7 +43,7 @@ def test_base_declarativa_inicia_sem_tabelas() -> None:
     assert not Base.metadata.tables
 ```
 
-- [ ] **Passo 2: Executar o teste e confirmar a falha**
+- [x] **Passo 2: Executar o teste e confirmar a falha**
 
 Executar:
 
@@ -54,7 +54,7 @@ poetry run python -m pytest \
 
 Resultado esperado: falha de importação porque `app.database` ainda não exporta `Base`.
 
-- [ ] **Passo 3: Implementar o mínimo necessário**
+- [x] **Passo 3: Implementar o mínimo necessário**
 
 Adicionar o import em `app/database.py`:
 
@@ -69,7 +69,7 @@ class Base(DeclarativeBase):
     pass
 ```
 
-- [ ] **Passo 4: Executar o teste e confirmar sucesso**
+- [x] **Passo 4: Executar o teste e confirmar sucesso**
 
 Executar:
 
@@ -80,7 +80,7 @@ poetry run python -m pytest \
 
 Resultado esperado: `1 passed`.
 
-- [ ] **Passo 5: Criar commit do ciclo**
+- [x] **Passo 5: Criar commit do ciclo**
 
 ```bash
 git add app/database.py tests/test_database.py
@@ -102,7 +102,7 @@ git commit -m "add declarative database base"
 - Consome: `app.config.Settings`, `app.database.Base` e a variável obrigatória `DATABASE_URL`.
 - Produz: configuração Alembic executável com `poetry run alembic upgrade head`, tendo `0001` como revisão inicial.
 
-- [ ] **Passo 1: Escrever o teste de integração que falha**
+- [x] **Passo 1: Escrever o teste de integração que falha**
 
 Criar `tests/test_migrations.py`:
 
@@ -138,7 +138,7 @@ def test_alembic_aplica_revisao_inicial_sem_tabelas_de_negocio() -> None:
     assert not Base.metadata.tables
 ```
 
-- [ ] **Passo 2: Executar o teste e confirmar a falha**
+- [x] **Passo 2: Executar o teste e confirmar a falha**
 
 Executar:
 
@@ -148,7 +148,7 @@ poetry run python -m pytest tests/test_migrations.py -v
 
 Resultado esperado: falha porque `alembic.ini` e o diretório de scripts ainda não existem.
 
-- [ ] **Passo 3: Gerar a estrutura assíncrona do Alembic**
+- [x] **Passo 3: Gerar a estrutura assíncrona do Alembic**
 
 Executar:
 
@@ -229,7 +229,7 @@ else:
 No `alembic.ini` gerado, remover a linha `sqlalchemy.url = ...`. A URL será
 inserida exclusivamente por `Settings` em tempo de execução.
 
-- [ ] **Passo 4: Criar a revisão inicial vazia**
+- [x] **Passo 4: Criar a revisão inicial vazia**
 
 Criar `alembic/versions/0001_revisao_inicial.py`:
 
@@ -250,7 +250,7 @@ def downgrade() -> None:
     pass
 ```
 
-- [ ] **Passo 5: Executar o teste e confirmar sucesso**
+- [x] **Passo 5: Executar o teste e confirmar sucesso**
 
 Executar:
 
@@ -260,7 +260,7 @@ poetry run python -m pytest tests/test_migrations.py -v
 
 Resultado esperado: `1 passed`, revisão atual `0001` e metadata sem tabelas de negócio.
 
-- [ ] **Passo 6: Validar os comandos operacionais**
+- [x] **Passo 6: Validar os comandos operacionais**
 
 Executar:
 
@@ -271,7 +271,7 @@ poetry run alembic current
 
 Resultado esperado: `upgrade head` termina sem erro e `current` informa `0001 (head)`.
 
-- [ ] **Passo 7: Criar commit do ciclo**
+- [x] **Passo 7: Criar commit do ciclo**
 
 ```bash
 git add alembic.ini alembic tests/test_migrations.py
@@ -289,7 +289,7 @@ git commit -m "configure async Alembic"
 - Consome: resultado validado das tarefas 1 e 2.
 - Produz: registro fiel do estado implementado e comandos de migration.
 
-- [ ] **Passo 1: Atualizar o estado do projeto**
+- [x] **Passo 1: Atualizar o estado do projeto**
 
 Em `docs/PROJECT_CONTEXT.md`, registrar em `Estado atual implementado`:
 
@@ -302,7 +302,7 @@ Em `docs/PROJECT_CONTEXT.md`, registrar em `Estado atual implementado`:
 Em `Próximo recorte`, deixar explícito que qualquer modelagem física ainda
 depende de novo escopo e aprovação.
 
-- [ ] **Passo 2: Executar a verificação final completa**
+- [x] **Passo 2: Executar a verificação final completa**
 
 Executar:
 
@@ -314,7 +314,7 @@ poetry run alembic current
 
 Resultado esperado: toda a suíte passa, Ruff sem ocorrências e revisão `0001 (head)`.
 
-- [ ] **Passo 3: Conferir o escopo do diff**
+- [x] **Passo 3: Conferir o escopo do diff**
 
 ```bash
 git status -sb
@@ -324,14 +324,14 @@ git diff --stat
 
 Resultado esperado: somente os arquivos descritos neste plano aparecem no diff e não há erros de espaços em branco.
 
-- [ ] **Passo 4: Criar commit da documentação**
+- [x] **Passo 4: Criar commit da documentação**
 
 ```bash
 git add docs/PROJECT_CONTEXT.md docs/superpowers/plans/2026-07-14-alembic-async.md
 git commit -m "document async Alembic setup"
 ```
 
-- [ ] **Passo 5: Publicar a branch atualizada**
+- [x] **Passo 5: Publicar a branch atualizada**
 
 ```bash
 git push
