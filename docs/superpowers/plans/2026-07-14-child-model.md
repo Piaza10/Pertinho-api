@@ -31,7 +31,7 @@
 - Consome: `app.database.Base`.
 - Produz: `app.models.Child`, mapeado para `children`, com `id: Mapped[UUID]`.
 
-- [ ] **Passo 1: Escrever os testes que falham**
+- [x] **Passo 1: Escrever os testes que falham**
 
 Criar `tests/test_child_model.py`:
 
@@ -67,7 +67,7 @@ def test_base_declarativa_registra_somente_children() -> None:
     assert Base.metadata.tables == {"children": Child.__table__}
 ```
 
-- [ ] **Passo 2: Executar os testes e confirmar a falha**
+- [x] **Passo 2: Executar os testes e confirmar a falha**
 
 ```bash
 poetry run python -m pytest \
@@ -77,7 +77,7 @@ poetry run python -m pytest \
 
 Resultado esperado: falha com `ModuleNotFoundError: No module named 'app.models'`.
 
-- [ ] **Passo 3: Implementar o modelo mínimo**
+- [x] **Passo 3: Implementar o modelo mínimo**
 
 Criar `app/models/child.py`:
 
@@ -104,7 +104,7 @@ from app.models.child import Child
 __all__ = ["Child"]
 ```
 
-- [ ] **Passo 4: Executar os testes e confirmar sucesso**
+- [x] **Passo 4: Executar os testes e confirmar sucesso**
 
 ```bash
 poetry run python -m pytest \
@@ -114,7 +114,7 @@ poetry run python -m pytest \
 
 Resultado esperado: `2 passed`.
 
-- [ ] **Passo 5: Criar commit do ciclo**
+- [x] **Passo 5: Criar commit do ciclo**
 
 ```bash
 git add app/models tests/test_child_model.py tests/test_database.py
@@ -134,7 +134,7 @@ git commit -m "add minimal Child model"
 - Consome: `app.models.Child` e revisão Alembic `0001`.
 - Produz: revisão `0002`, que cria e remove exclusivamente a tabela `children`.
 
-- [ ] **Passo 1: Alterar o teste de migration para exigir 0002**
+- [x] **Passo 1: Alterar o teste de migration para exigir 0002**
 
 Substituir `tests/test_migrations.py` por:
 
@@ -255,11 +255,13 @@ def test_downgrade_0002_remove_children(
         tabela_existe = asyncio.run(children_existe())
     finally:
         command.upgrade(configuracao_alembic, "head")
+        tabela_restaurada = asyncio.run(children_existe())
 
     assert not tabela_existe
+    assert tabela_restaurada
 ```
 
-- [ ] **Passo 2: Executar o teste e confirmar a falha**
+- [x] **Passo 2: Executar o teste e confirmar a falha**
 
 ```bash
 set -a
@@ -271,7 +273,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 
 Resultado esperado: falha porque a revisão atual ainda é `0001` e `children` não existe.
 
-- [ ] **Passo 3: Registrar Child no ambiente Alembic**
+- [x] **Passo 3: Registrar Child no ambiente Alembic**
 
 Em `alembic/env.py`, substituir:
 
@@ -297,7 +299,7 @@ por:
 target_metadata = Child.metadata
 ```
 
-- [ ] **Passo 4: Criar a migration 0002**
+- [x] **Passo 4: Criar a migration 0002**
 
 Criar `alembic/versions/0002_cria_children.py`:
 
@@ -325,7 +327,7 @@ def downgrade() -> None:
     op.drop_table("children")
 ```
 
-- [ ] **Passo 5: Executar os testes e confirmar sucesso**
+- [x] **Passo 5: Executar os testes e confirmar sucesso**
 
 ```bash
 set -a
@@ -337,7 +339,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 
 Resultado esperado: `3 passed`; a fixture restaura o banco em `0002 (head)`.
 
-- [ ] **Passo 6: Validar o estado operacional**
+- [x] **Passo 6: Validar o estado operacional**
 
 ```bash
 poetry run alembic upgrade head
@@ -346,7 +348,7 @@ poetry run alembic current
 
 Resultado esperado: `0002 (head)`.
 
-- [ ] **Passo 7: Criar commit do ciclo**
+- [x] **Passo 7: Criar commit do ciclo**
 
 ```bash
 git add alembic/env.py alembic/versions/0002_cria_children.py tests/test_migrations.py
@@ -365,7 +367,7 @@ git commit -m "add children migration"
 - Consome: modelo e migration validados nas tarefas anteriores.
 - Produz: contexto mestre fiel ao estado implementado.
 
-- [ ] **Passo 1: Atualizar o contexto mestre**
+- [x] **Passo 1: Atualizar o contexto mestre**
 
 Adicionar a `Estado atual implementado` em `docs/PROJECT_CONTEXT.md`:
 
@@ -379,12 +381,12 @@ Adicionar a `Estado atual implementado` em `docs/PROJECT_CONTEXT.md`:
 Atualizar `Próximo recorte` para deixar qualquer nova entidade ou campo
 dependente de novo desenho e aprovação.
 
-- [ ] **Passo 2: Marcar o plano como executado**
+- [x] **Passo 2: Marcar o plano como executado**
 
 Substituir todos os marcadores `- [ ]` deste arquivo por `- [x]` depois que os
 respectivos passos forem comprovados.
 
-- [ ] **Passo 3: Executar a verificação final completa**
+- [x] **Passo 3: Executar a verificação final completa**
 
 ```bash
 set -a
@@ -397,7 +399,7 @@ poetry run alembic current
 
 Resultado esperado: toda a suíte passa, Ruff sem ocorrências e `0002 (head)`.
 
-- [ ] **Passo 4: Auditar escopo e dados**
+- [x] **Passo 4: Auditar escopo e dados**
 
 ```bash
 git diff --check
@@ -410,14 +412,14 @@ rg -n "display_name|full_name|birth_date|photo|medical|address|created_at|update
 Resultado esperado: nenhum dos campos proibidos aparece no modelo ou na
 migration; o diff contém somente os arquivos previstos.
 
-- [ ] **Passo 5: Criar commit documental**
+- [x] **Passo 5: Criar commit documental**
 
 ```bash
 git add docs/PROJECT_CONTEXT.md docs/superpowers/plans/2026-07-14-child-model.md
 git commit -m "document minimal Child model"
 ```
 
-- [ ] **Passo 6: Publicar na main**
+- [x] **Passo 6: Publicar na main**
 
 ```bash
 git push origin main

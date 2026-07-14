@@ -325,6 +325,10 @@ postgresql+asyncpg://<usuario>:<senha>@127.0.0.1:5433/<banco>
 - Alembic configurado para usar conexão assíncrona e `DATABASE_URL` via
   `Settings`.
 - Revisão inicial vazia `0001` aplicada ao PostgreSQL local.
+- Modelo físico `Child` criado somente com `id: UUID`, sem dados pessoais ou
+  timestamps.
+- Migration `0002` cria exclusivamente a tabela `children` e suporta downgrade
+  para `0001`.
 
 ### Comandos de migrations
 
@@ -342,6 +346,6 @@ suíte volta a ser coletada e executada integralmente.
 
 ## Próximo recorte
 
-A infraestrutura assíncrona de migrations está concluída. Qualquer modelagem
-física ainda deve ter seu recorte técnico apresentado e aprovado antes da
-implementação.
+O modelo mínimo de `Child` está concluído. Qualquer nova entidade, campo ou
+relacionamento ainda deve ter seu recorte técnico apresentado e aprovado antes
+da implementação.
