@@ -49,10 +49,11 @@ async def test_get_session_fornece_sessao_funcional() -> None:
     assert resultado == 1
 
 
-def test_base_declarativa_inicia_sem_tabelas() -> None:
+def test_base_declarativa_registra_somente_children() -> None:
     from sqlalchemy.orm import DeclarativeBase
 
     from app.database import Base
+    from app.models import Child
 
     assert issubclass(Base, DeclarativeBase)
-    assert not Base.metadata.tables
+    assert Base.metadata.tables == {"children": Child.__table__}
