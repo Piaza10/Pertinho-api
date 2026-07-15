@@ -49,11 +49,14 @@ async def test_get_session_fornece_sessao_funcional() -> None:
     assert resultado == 1
 
 
-def test_base_declarativa_registra_somente_children() -> None:
+def test_base_declarativa_registra_somente_children_e_bracelets() -> None:
     from sqlalchemy.orm import DeclarativeBase
 
     from app.database import Base
-    from app.models import Child
+    from app.models import Bracelet, Child
 
     assert issubclass(Base, DeclarativeBase)
-    assert Base.metadata.tables == {"children": Child.__table__}
+    assert Base.metadata.tables == {
+        "children": Child.__table__,
+        "bracelets": Bracelet.__table__,
+    }
