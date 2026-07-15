@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import Settings
-from app.models import Child
+from app.models import Bracelet
 
 config = context.config
 config.set_main_option(
@@ -18,7 +18,7 @@ config.set_main_option(
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Child.metadata
+target_metadata = Bracelet.metadata
 
 
 def run_migrations_offline() -> None:
