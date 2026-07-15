@@ -320,8 +320,7 @@ postgresql+asyncpg://<usuario>:<senha>@127.0.0.1:5433/<banco>
 - Dependência assíncrona `get_session` implementada com fechamento automático
   da sessão.
 - Conectividade real validada com `SELECT 1` pelo engine e pela sessão.
-- Base declarativa compartilhada criada, ainda sem modelos ou tabelas de
-  negócio.
+- Base declarativa compartilhada usada pelos modelos físicos aprovados.
 - Alembic configurado para usar conexão assíncrona e `DATABASE_URL` via
   `Settings`.
 - Revisão inicial vazia `0001` aplicada ao PostgreSQL local.
