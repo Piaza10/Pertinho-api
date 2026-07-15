@@ -329,6 +329,14 @@ postgresql+asyncpg://<usuario>:<senha>@127.0.0.1:5433/<banco>
   timestamps.
 - Migration `0002` cria exclusivamente a tabela `children` e suporta downgrade
   para `0001`.
+- Modelo físico `Bracelet` criado com UUID, token público aleatório, os quatro
+  estados aprovados, vínculo opcional e unidirecional com `Child` e datas de
+  ativação/revogação.
+- Migration `0003` cria `bracelets` com constraints de status, coerência de
+  estado, unicidade e chave estrangeira, e suporta downgrade para `0002` sem
+  alterar `children`.
+- Defaults e constraints de `Bracelet` validados no PostgreSQL local por testes
+  de integração condicionados a `TEST_DATABASE_URL`.
 
 ### Comandos de migrations
 
@@ -346,6 +354,7 @@ suíte volta a ser coletada e executada integralmente.
 
 ## Próximo recorte
 
-O modelo mínimo de `Child` está concluído. Qualquer nova entidade, campo ou
-relacionamento ainda deve ter seu recorte técnico apresentado e aprovado antes
-da implementação.
+O modelo físico de `Bracelet` está concluído. As operações de ativação,
+desvinculação e perda ainda não foram implementadas e exigem novo recorte
+técnico aprovado. Qualquer nova entidade, campo, endpoint ou serviço também
+deve ser apresentado e aprovado separadamente.

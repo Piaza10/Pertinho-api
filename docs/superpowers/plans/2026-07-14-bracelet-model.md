@@ -36,7 +36,7 @@
 - Consome: `app.database.Base` e `app.models.child.Child`.
 - Produz: `app.models.BraceletStatus`, `app.models.Bracelet` e `app.models.bracelet.gerar_token_publico() -> str`.
 
-- [ ] **Passo 1: Escrever os testes unitários que falham**
+- [x] **Passo 1: Escrever os testes unitários que falham**
 
 Criar `tests/test_bracelet_model.py`:
 
@@ -144,7 +144,7 @@ def test_base_declarativa_registra_somente_children_e_bracelets() -> None:
     }
 ```
 
-- [ ] **Passo 2: Executar os testes e confirmar a falha**
+- [x] **Passo 2: Executar os testes e confirmar a falha**
 
 ```bash
 poetry run python -m pytest \
@@ -155,7 +155,7 @@ poetry run python -m pytest \
 
 Resultado esperado: falha de importação porque `Bracelet` e `BraceletStatus` ainda não existem em `app.models`.
 
-- [ ] **Passo 3: Implementar o modelo mínimo**
+- [x] **Passo 3: Implementar o modelo mínimo**
 
 Criar `app/models/bracelet.py`:
 
@@ -233,7 +233,7 @@ from app.models.child import Child
 __all__ = ["Bracelet", "BraceletStatus", "Child"]
 ```
 
-- [ ] **Passo 4: Executar os testes e confirmar sucesso**
+- [x] **Passo 4: Executar os testes e confirmar sucesso**
 
 ```bash
 poetry run python -m pytest \
@@ -244,7 +244,7 @@ poetry run python -m pytest \
 
 Resultado esperado: `5 passed`.
 
-- [ ] **Passo 5: Executar Ruff no recorte**
+- [x] **Passo 5: Executar Ruff no recorte**
 
 ```bash
 poetry run ruff check \
@@ -255,7 +255,7 @@ poetry run ruff check \
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 6: Criar commit do ciclo**
+- [x] **Passo 6: Criar commit do ciclo**
 
 ```bash
 git add \
@@ -279,7 +279,7 @@ git commit -m "add Bracelet model"
 - Consome: `app.models.Bracelet`, `app.models.Child` e revisão Alembic `0002`.
 - Produz: revisão `0003`, que cria `bracelets` no upgrade e remove somente `bracelets` no downgrade.
 
-- [ ] **Passo 1: Alterar o teste de migration para exigir a revisão 0003**
+- [x] **Passo 1: Alterar o teste de migration para exigir a revisão 0003**
 
 Em `tests/test_migrations.py`, ajustar os imports:
 
@@ -449,7 +449,7 @@ def test_downgrade_0003_remove_somente_bracelets(
     assert children_restaurada
 ```
 
-- [ ] **Passo 2: Executar os testes e confirmar a falha**
+- [x] **Passo 2: Executar os testes e confirmar a falha**
 
 ```bash
 set -a
@@ -462,7 +462,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 
 Resultado esperado: falha porque o head ainda é `0002` e a tabela `bracelets` não existe.
 
-- [ ] **Passo 3: Registrar a metadata completa no Alembic**
+- [x] **Passo 3: Registrar a metadata completa no Alembic**
 
 Em `alembic/env.py`, substituir:
 
@@ -490,7 +490,7 @@ target_metadata = Bracelet.metadata
 
 `Bracelet.metadata` é a metadata da `Base` compartilhada e contém `children` e `bracelets`; o import também garante o registro dos dois modelos.
 
-- [ ] **Passo 4: Criar a migration 0003**
+- [x] **Passo 4: Criar a migration 0003**
 
 Criar `alembic/versions/0003_cria_bracelets.py`:
 
@@ -566,7 +566,7 @@ def downgrade() -> None:
     op.drop_table("bracelets")
 ```
 
-- [ ] **Passo 5: Executar os testes e confirmar sucesso**
+- [x] **Passo 5: Executar os testes e confirmar sucesso**
 
 ```bash
 set -a
@@ -579,7 +579,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 
 Resultado esperado: `4 passed`.
 
-- [ ] **Passo 6: Confirmar a revisão aplicada**
+- [x] **Passo 6: Confirmar a revisão aplicada**
 
 ```bash
 set -a
@@ -590,7 +590,7 @@ poetry run alembic current
 
 Resultado esperado: `0003 (head)`.
 
-- [ ] **Passo 7: Executar Ruff no recorte**
+- [x] **Passo 7: Executar Ruff no recorte**
 
 ```bash
 poetry run ruff check \
@@ -601,7 +601,7 @@ poetry run ruff check \
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 8: Criar commit do ciclo**
+- [x] **Passo 8: Criar commit do ciclo**
 
 ```bash
 git add \
@@ -622,7 +622,7 @@ git commit -m "add bracelets migration"
 - Consome: `Bracelet`, `BraceletStatus`, `Child`, `engine`, `session_factory` e schema Alembic `0003`.
 - Produz: cobertura de aceitação para defaults, token, unicidades, FK, status e coerência de estado, sem alterar código de produção.
 
-- [ ] **Passo 1: Escrever os testes de integração**
+- [x] **Passo 1: Escrever os testes de integração**
 
 Criar `tests/test_bracelet_database.py`:
 
@@ -820,7 +820,7 @@ def test_banco_rejeita_status_fora_do_enum() -> None:
     )
 ```
 
-- [ ] **Passo 2: Executar os testes e confirmar sucesso**
+- [x] **Passo 2: Executar os testes e confirmar sucesso**
 
 Estes testes de aceitação são escritos depois da migration porque não introduzem
 novo comportamento. Cada decisão de produção já foi exigida antes da
@@ -838,7 +838,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 
 Resultado esperado: `9 passed` — quatro casos do teste parametrizado contam separadamente.
 
-- [ ] **Passo 3: Executar Ruff no novo teste**
+- [x] **Passo 3: Executar Ruff no novo teste**
 
 ```bash
 poetry run ruff check tests/test_bracelet_database.py
@@ -846,7 +846,7 @@ poetry run ruff check tests/test_bracelet_database.py
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 4: Criar commit do ciclo**
+- [x] **Passo 4: Criar commit do ciclo**
 
 ```bash
 git add tests/test_bracelet_database.py
@@ -864,7 +864,7 @@ git commit -m "test Bracelet database constraints"
 - Consome: implementação concluída de `Bracelet` e revisão Alembic `0003`.
 - Produz: estado atual do projeto documentado sem antecipar operações de domínio.
 
-- [ ] **Passo 1: Atualizar somente o estado implementado**
+- [x] **Passo 1: Atualizar somente o estado implementado**
 
 Em `docs/PROJECT_CONTEXT.md`, após o item da migration `0002`, adicionar:
 
@@ -890,7 +890,7 @@ técnico aprovado. Qualquer nova entidade, campo, endpoint ou serviço também
 deve ser apresentado e aprovado separadamente.
 ```
 
-- [ ] **Passo 2: Executar a suíte completa com PostgreSQL**
+- [x] **Passo 2: Executar a suíte completa com PostgreSQL**
 
 ```bash
 set -a
@@ -901,7 +901,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest -v
 
 Resultado esperado: todos os testes passam, sem skips de integração e sem warnings inesperados.
 
-- [ ] **Passo 3: Executar Ruff em todo o projeto**
+- [x] **Passo 3: Executar Ruff em todo o projeto**
 
 ```bash
 poetry run ruff check .
@@ -909,7 +909,7 @@ poetry run ruff check .
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 4: Confirmar a revisão final do banco**
+- [x] **Passo 4: Confirmar a revisão final do banco**
 
 ```bash
 set -a
@@ -920,7 +920,7 @@ poetry run alembic current
 
 Resultado esperado: `0003 (head)`.
 
-- [ ] **Passo 5: Revisar escopo e alterações**
+- [x] **Passo 5: Revisar escopo e alterações**
 
 ```bash
 git status --short
@@ -930,14 +930,14 @@ git diff --stat HEAD
 
 Resultado esperado: somente arquivos do modelo, migration, testes e contexto de `Bracelet`; `git diff --check` não produz saída.
 
-- [ ] **Passo 6: Criar commit da documentação**
+- [x] **Passo 6: Criar commit da documentação**
 
 ```bash
 git add docs/PROJECT_CONTEXT.md
 git commit -m "document Bracelet model"
 ```
 
-- [ ] **Passo 7: Apresentar o resultado e parar**
+- [x] **Passo 7: Apresentar o resultado e parar**
 
 Informar:
 
