@@ -501,6 +501,7 @@ do SQLAlchemy por:
 
 ```python
 from sqlalchemy import delete, event, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 ```
 
 Adicionar ao final de `tests/test_bracelet_activation_service.py`:
@@ -541,29 +542,34 @@ async def executar_prova_de_bloqueio_child() -> None:
 
         async with (
             session_factory() as bloqueadora,
-            session_factory() as servico,
+            engine.connect() as conexao_servico,
         ):
-            async with bloqueadora.begin():
-                await bloqueadora.scalar(
-                    select(Child)
-                    .where(Child.id == child_id)
-                    .with_for_update(),
-                )
+            backend_pid = await conexao_servico.scalar(
+                text("SELECT pg_backend_pid()"),
+            )
+            assert backend_pid is not None
+            await conexao_servico.rollback()
 
-                backend_pid = await servico.scalar(
-                    text("SELECT pg_backend_pid()"),
-                )
-                assert backend_pid is not None
-                await servico.rollback()
-                tarefa = asyncio.create_task(
-                    ativar_bracelet(servico, bracelet_id, child_id),
-                )
-                esperou_pelo_lock = await aguardar_espera_por_lock(
-                    backend_pid,
-                    tarefa,
-                )
+            async with AsyncSession(
+                bind=conexao_servico,
+                expire_on_commit=False,
+            ) as servico:
+                async with bloqueadora.begin():
+                    await bloqueadora.scalar(
+                        select(Child)
+                        .where(Child.id == child_id)
+                        .with_for_update(),
+                    )
 
-            resultado = await tarefa
+                    tarefa = asyncio.create_task(
+                        ativar_bracelet(servico, bracelet_id, child_id),
+                    )
+                    esperou_pelo_lock = await aguardar_espera_por_lock(
+                        backend_pid,
+                        tarefa,
+                    )
+
+                resultado = await tarefa
 
         assert esperou_pelo_lock is True
         assert resultado.status is BraceletStatus.ATIVA
