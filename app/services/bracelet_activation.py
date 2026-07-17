@@ -24,10 +24,14 @@ async def ativar_bracelet(
 ) -> Bracelet:
     async with sessao.begin():
         child = await sessao.scalar(
-            select(Child).where(Child.id == child_id),
+            select(Child)
+            .where(Child.id == child_id)
+            .with_for_update(),
         )
         bracelet = await sessao.scalar(
-            select(Bracelet).where(Bracelet.id == bracelet_id),
+            select(Bracelet)
+            .where(Bracelet.id == bracelet_id)
+            .with_for_update(),
         )
 
         if child is None or bracelet is None:
