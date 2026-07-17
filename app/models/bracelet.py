@@ -17,6 +17,19 @@ class BraceletStatus(StrEnum):
     PERDIDA = "PERDIDA"
 
 
+class TransicaoBraceletInvalida(ValueError):
+    def __init__(
+        self,
+        origem: BraceletStatus,
+        destino: BraceletStatus,
+    ) -> None:
+        self.origem = origem
+        self.destino = destino
+        super().__init__(
+            f"Transição de {origem.value} para {destino.value} não permitida",
+        )
+
+
 def gerar_token_publico() -> str:
     return token_urlsafe(32)
 
@@ -61,19 +74,44 @@ class Bracelet(Base):
 
     child: Mapped[Child | None] = relationship()
 
+    def _validar_transicao(
+        self,
+        origem_esperada: BraceletStatus,
+        destino: BraceletStatus,
+    ) -> None:
+        if self.status is not origem_esperada:
+            raise TransicaoBraceletInvalida(self.status, destino)
+
     def ativar(self, child: Child, instante: datetime) -> None:
+        self._validar_transicao(
+            BraceletStatus.ESTOQUE,
+            BraceletStatus.ATIVA,
+        )
+        if not isinstance(child, Child):
+            raise TypeError("child deve ser uma instância de Child")
+
         self.status = BraceletStatus.ATIVA
         self.child = child
         self.activated_at = instante
         self.revoked_at = None
 
     def desvincular(self, instante: datetime) -> None:
+        self._validar_transicao(
+            BraceletStatus.ATIVA,
+            BraceletStatus.DESVINCULADA,
+        )
+
         self.status = BraceletStatus.DESVINCULADA
         self.child = None
         self.child_id = None
         self.revoked_at = instante
 
     def marcar_como_perdida(self, instante: datetime) -> None:
+        self._validar_transicao(
+            BraceletStatus.ATIVA,
+            BraceletStatus.PERDIDA,
+        )
+
         self.status = BraceletStatus.PERDIDA
         self.child = None
         self.child_id = None
