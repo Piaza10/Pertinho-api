@@ -55,7 +55,7 @@ pytest, pytest-asyncio, Poetry, Alembic e Ruff.
   `async def ativar_bracelet(sessao: AsyncSession, bracelet_id: UUID, child_id: UUID) -> Bracelet`
   e `RecursoAtivacaoNaoEncontrado`.
 
-- [ ] **Step 1: Criar os testes de ativação válida e recurso ausente**
+- [x] **Step 1: Criar os testes de ativação válida e recurso ausente**
 
 Criar `tests/test_bracelet_activation_service.py`:
 
@@ -187,7 +187,7 @@ def test_recurso_ausente_usa_erro_neutro_e_rollback(
     asyncio.run(executar_recurso_ausente(recurso_ausente))
 ```
 
-- [ ] **Step 2: Executar os testes e confirmar RED**
+- [x] **Step 2: Executar os testes e confirmar RED**
 
 ```bash
 set -a
@@ -200,7 +200,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 Resultado esperado: falha na coleta com `ModuleNotFoundError` para
 `app.services`, pois o serviço ainda não existe.
 
-- [ ] **Step 3: Implementar o serviço transacional mínimo**
+- [x] **Step 3: Implementar o serviço transacional mínimo**
 
 Criar `app/services/bracelet_activation.py`:
 
@@ -241,7 +241,7 @@ async def ativar_bracelet(
     return bracelet
 ```
 
-- [ ] **Step 4: Executar testes focados e confirmar GREEN**
+- [x] **Step 4: Executar testes focados e confirmar GREEN**
 
 ```bash
 set -a
@@ -256,7 +256,7 @@ poetry run ruff check \
 
 Resultado esperado: `3 passed` e `All checks passed!`.
 
-- [ ] **Step 5: Criar commit da ativação básica**
+- [x] **Step 5: Criar commit da ativação básica**
 
 ```bash
 git add \
@@ -277,7 +277,7 @@ git commit -m "add transactional Bracelet activation service"
 - Produces: `ConflitoAtivacaoBracelet` e verificação de vínculo existente
   antes da mutação de domínio.
 
-- [ ] **Step 1: Importar os erros e adicionar testes de conflito e rollback**
+- [x] **Step 1: Importar os erros e adicionar testes de conflito e rollback**
 
 Em `tests/test_bracelet_activation_service.py`, substituir os imports de
 modelo e serviço por:
@@ -388,7 +388,7 @@ def test_preserva_erro_de_dominio_e_faz_rollback() -> None:
     asyncio.run(executar_transicao_invalida())
 ```
 
-- [ ] **Step 2: Executar os novos testes e confirmar RED**
+- [x] **Step 2: Executar os novos testes e confirmar RED**
 
 ```bash
 set -a
@@ -403,7 +403,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 Resultado esperado: falha na coleta porque
 `ConflitoAtivacaoBracelet` ainda não existe.
 
-- [ ] **Step 3: Adicionar o conflito e a consulta preventiva**
+- [x] **Step 3: Adicionar o conflito e a consulta preventiva**
 
 Substituir `app/services/bracelet_activation.py` por:
 
@@ -458,7 +458,7 @@ async def ativar_bracelet(
     return bracelet
 ```
 
-- [ ] **Step 4: Executar o arquivo focado e Ruff**
+- [x] **Step 4: Executar o arquivo focado e Ruff**
 
 ```bash
 set -a
@@ -473,7 +473,7 @@ poetry run ruff check \
 
 Resultado esperado: `5 passed` e `All checks passed!`.
 
-- [ ] **Step 5: Criar commit dos erros transacionais**
+- [x] **Step 5: Criar commit dos erros transacionais**
 
 ```bash
 git add \
@@ -494,7 +494,7 @@ git commit -m "validate Bracelet activation service errors"
 - Produces: bloqueio pessimista de `Child` seguido por `Bracelet`, ambos com
   `SELECT ... FOR UPDATE`.
 
-- [ ] **Step 1: Adicionar provas reais de bloqueio e concorrência**
+- [x] **Step 1: Adicionar provas reais de bloqueio e concorrência**
 
 No topo de `tests/test_bracelet_activation_service.py`, substituir o import
 do SQLAlchemy por:
@@ -713,7 +713,7 @@ def test_serializa_duas_ativacoes_para_a_mesma_child() -> None:
     asyncio.run(executar_ativacoes_concorrentes())
 ```
 
-- [ ] **Step 2: Executar a prova de bloqueio e confirmar RED determinístico**
+- [x] **Step 2: Executar a prova de bloqueio e confirmar RED determinístico**
 
 ```bash
 set -a
@@ -732,7 +732,7 @@ ordem `Child` seguida por `Bracelet`. O teste concorrente permanece como
 aceitação funcional, mas não é usado isoladamente como evidência RED porque
 seu escalonamento não determina a janela entre consulta e `flush`.
 
-- [ ] **Step 3: Adicionar os bloqueios na ordem aprovada**
+- [x] **Step 3: Adicionar os bloqueios na ordem aprovada**
 
 Em `app/services/bracelet_activation.py`, substituir somente as duas consultas
 iniciais por:
@@ -753,7 +753,7 @@ iniciais por:
 Manter a consulta de vínculo existente depois desses dois bloqueios e antes de
 `bracelet.ativar(...)`.
 
-- [ ] **Step 4: Repetir concorrência e executar todos os testes do serviço**
+- [x] **Step 4: Repetir concorrência e executar todos os testes do serviço**
 
 ```bash
 set -a
@@ -774,7 +774,7 @@ poetry run ruff check \
 Resultado esperado: cinco repetições com `1 passed`, arquivo focado com
 `8 passed` e Ruff com `All checks passed!`.
 
-- [ ] **Step 5: Criar commit da concorrência**
+- [x] **Step 5: Criar commit da concorrência**
 
 ```bash
 git add \
@@ -794,7 +794,7 @@ git commit -m "serialize concurrent Bracelet activations"
 - Produces: estado atual documentado sem declarar endpoint, autorização ou
   outras transições como implementadas.
 
-- [ ] **Step 1: Atualizar somente o estado implementado**
+- [x] **Step 1: Atualizar somente o estado implementado**
 
 Em `docs/PROJECT_CONTEXT.md`, depois das transições de domínio implementadas,
 adicionar:
@@ -818,13 +818,13 @@ uso de desvinculação e perda, assim como endpoints, schemas e autorização,
 ainda não foram implementados e exigem novo recorte técnico aprovado.
 ```
 
-- [ ] **Step 2: Marcar o plano como executado sem alterar sua instrução histórica**
+- [x] **Step 2: Marcar o plano como executado sem alterar sua instrução histórica**
 
 Marcar como concluídos todos os checkboxes de passos deste plano. Preservar
 esta frase em linguagem natural, sem substituir exemplos literais dentro de
 texto ou blocos de código.
 
-- [ ] **Step 3: Executar a suíte completa com PostgreSQL**
+- [x] **Step 3: Executar a suíte completa com PostgreSQL**
 
 ```bash
 set -a
@@ -835,7 +835,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest -v
 
 Resultado esperado: `70 passed`, sem skips e sem warnings inesperados.
 
-- [ ] **Step 4: Executar Ruff global**
+- [x] **Step 4: Executar Ruff global**
 
 ```bash
 poetry run ruff check .
@@ -843,7 +843,7 @@ poetry run ruff check .
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Step 5: Confirmar ausência de mudança no schema**
+- [x] **Step 5: Confirmar ausência de mudança no schema**
 
 ```bash
 set -a
@@ -855,7 +855,7 @@ poetry run alembic current
 
 Resultado esperado: `No new upgrade operations detected.` e `0003 (head)`.
 
-- [ ] **Step 6: Revisar escopo e estado Git**
+- [x] **Step 6: Revisar escopo e estado Git**
 
 ```bash
 git diff --check
@@ -867,7 +867,7 @@ git diff --name-only 804ea79..HEAD
 Resultado esperado: somente o serviço, seus testes, o contexto e este plano;
 nenhuma migration, camada HTTP, schema ou modelo alterado.
 
-- [ ] **Step 7: Criar commit documental**
+- [x] **Step 7: Criar commit documental**
 
 ```bash
 git add \
@@ -876,7 +876,7 @@ git add \
 git commit -m "document Bracelet activation service"
 ```
 
-- [ ] **Step 8: Apresentar o resultado e parar**
+- [x] **Step 8: Apresentar o resultado e parar**
 
 Informar arquivos alterados, testes, Ruff, Alembic, revisão independente e
 confirmação de que nenhuma migration, endpoint, schema, entidade ou serviço de

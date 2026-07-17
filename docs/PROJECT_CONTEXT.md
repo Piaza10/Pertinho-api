@@ -341,6 +341,12 @@ postgresql+asyncpg://<usuario>:<senha>@127.0.0.1:5433/<banco>
   estado, fuso horário, ordem temporal e atomicidade em memória.
 - Exceções tipadas de transição e instante inválido não expõem identificadores
   nem dados pessoais.
+- Serviço de aplicação para ativação de `Bracelet` implementado com controle
+  transacional, instante UTC interno, bloqueio pessimista e rollback
+  automático.
+- Ativações concorrentes para a mesma criança são serializadas no PostgreSQL;
+  recursos ausentes e conflitos usam exceções neutras sem identificadores ou
+  dados pessoais.
 
 ### Comandos de migrations
 
@@ -358,7 +364,6 @@ suíte volta a ser coletada e executada integralmente.
 
 ## Próximo recorte
 
-As transições de domínio de `Bracelet` estão concluídas. A camada de aplicação
-que controlará sessão, transação e tratamento de concorrência ainda não foi
-implementada. Qualquer serviço, endpoint, schema ou nova entidade exige novo
-recorte técnico aprovado.
+O serviço transacional de ativação de `Bracelet` está concluído. Os casos de
+uso de desvinculação e perda, assim como endpoints, schemas e autorização,
+ainda não foram implementados e exigem novo recorte técnico aprovado.
