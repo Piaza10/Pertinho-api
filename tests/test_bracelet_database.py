@@ -2,7 +2,7 @@ import asyncio
 import os
 import re
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -19,6 +19,9 @@ requer_banco_de_teste = pytest.mark.skipif(
     not BANCO_DE_TESTE_CONFIGURADO,
     reason="TEST_DATABASE_URL não configurada",
 )
+
+ATIVACAO = datetime(2026, 1, 15, 12, tzinfo=UTC)
+REVOGACAO = ATIVACAO + timedelta(hours=1)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -67,6 +70,39 @@ async def confirmar_erro_em_sql(
         await engine.dispose()
 
 
+async def persistir_transicao(
+    status_final: BraceletStatus,
+) -> tuple[BraceletStatus, UUID | None, datetime, datetime | None, UUID]:
+    try:
+        async with session_factory() as sessao:
+            child = Child()
+            bracelet = Bracelet()
+            sessao.add_all([child, bracelet])
+            await sessao.flush()
+
+            bracelet.ativar(child, ATIVACAO)
+            await sessao.flush()
+
+            if status_final is BraceletStatus.DESVINCULADA:
+                bracelet.desvincular(REVOGACAO)
+                await sessao.flush()
+            elif status_final is BraceletStatus.PERDIDA:
+                bracelet.marcar_como_perdida(REVOGACAO)
+                await sessao.flush()
+
+            resultado = (
+                bracelet.status,
+                bracelet.child_id,
+                bracelet.activated_at,
+                bracelet.revoked_at,
+                child.id,
+            )
+            await sessao.rollback()
+            return resultado
+    finally:
+        await engine.dispose()
+
+
 @requer_banco_de_teste
 def test_bracelet_gera_uuid_token_distinto_e_status_estoque() -> None:
     primeira, segunda = asyncio.run(criar_bracelets_em_estoque())
@@ -81,6 +117,32 @@ def test_bracelet_gera_uuid_token_distinto_e_status_estoque() -> None:
     assert re.fullmatch(r"[A-Za-z0-9_-]{43}", segunda.public_token)
     assert primeira.status is BraceletStatus.ESTOQUE
     assert segunda.status is BraceletStatus.ESTOQUE
+
+
+@requer_banco_de_teste
+@pytest.mark.parametrize(
+    "status_final",
+    [
+        BraceletStatus.ATIVA,
+        BraceletStatus.DESVINCULADA,
+        BraceletStatus.PERDIDA,
+    ],
+)
+def test_metodos_de_transicao_produzem_estado_persistivel(
+    status_final: BraceletStatus,
+) -> None:
+    status, child_id, activated_at, revoked_at, id_child = asyncio.run(
+        persistir_transicao(status_final),
+    )
+
+    assert status is status_final
+    assert activated_at == ATIVACAO
+    if status_final is BraceletStatus.ATIVA:
+        assert child_id == id_child
+        assert revoked_at is None
+    else:
+        assert child_id is None
+        assert revoked_at == REVOGACAO
 
 
 @requer_banco_de_teste
