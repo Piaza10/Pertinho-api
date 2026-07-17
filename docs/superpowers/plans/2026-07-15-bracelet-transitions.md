@@ -1,6 +1,6 @@
 # Transições de domínio de Bracelet - Plano de implementação
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implementar as transições de domínio de `Bracelet`, com validação de estado e tempo, atomicidade em memória e persistência compatível com as constraints existentes.
 
@@ -33,7 +33,7 @@
 - Consome: `Bracelet`, `BraceletStatus` e `Child`.
 - Produz: `Bracelet.ativar(child: Child, instante: datetime) -> None`, `Bracelet.desvincular(instante: datetime) -> None` e `Bracelet.marcar_como_perdida(instante: datetime) -> None`.
 
-- [ ] **Passo 1: Escrever os testes das três transições válidas**
+- [x] **Passo 1: Escrever os testes das três transições válidas**
 
 Criar `tests/test_bracelet_transitions.py`:
 
@@ -97,7 +97,7 @@ def test_marcar_como_perdida_remove_vinculo_e_preserva_ativacao() -> None:
     assert bracelet.revoked_at == REVOGACAO
 ```
 
-- [ ] **Passo 2: Executar os testes e confirmar RED**
+- [x] **Passo 2: Executar os testes e confirmar RED**
 
 ```bash
 poetry run python -m pytest tests/test_bracelet_transitions.py -v
@@ -105,7 +105,7 @@ poetry run python -m pytest tests/test_bracelet_transitions.py -v
 
 Resultado esperado: `3 failed` com `AttributeError`, pois os métodos ainda não existem.
 
-- [ ] **Passo 3: Implementar somente os caminhos válidos**
+- [x] **Passo 3: Implementar somente os caminhos válidos**
 
 Adicionar ao final da classe `Bracelet` em `app/models/bracelet.py`:
 
@@ -129,7 +129,7 @@ Adicionar ao final da classe `Bracelet` em `app/models/bracelet.py`:
         self.revoked_at = instante
 ```
 
-- [ ] **Passo 4: Executar os testes e confirmar GREEN**
+- [x] **Passo 4: Executar os testes e confirmar GREEN**
 
 ```bash
 poetry run python -m pytest tests/test_bracelet_transitions.py -v
@@ -137,7 +137,7 @@ poetry run python -m pytest tests/test_bracelet_transitions.py -v
 
 Resultado esperado: `3 passed`.
 
-- [ ] **Passo 5: Executar Ruff no recorte**
+- [x] **Passo 5: Executar Ruff no recorte**
 
 ```bash
 poetry run ruff check app/models/bracelet.py tests/test_bracelet_transitions.py
@@ -145,7 +145,7 @@ poetry run ruff check app/models/bracelet.py tests/test_bracelet_transitions.py
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 6: Criar commit do ciclo**
+- [x] **Passo 6: Criar commit do ciclo**
 
 ```bash
 git add app/models/bracelet.py tests/test_bracelet_transitions.py
@@ -165,7 +165,7 @@ git commit -m "add valid Bracelet transitions"
 - Consome: os três métodos criados na Tarefa 1.
 - Produz: `TransicaoBraceletInvalida(origem: BraceletStatus, destino: BraceletStatus)` e validação de `Child` antes de mutações.
 
-- [ ] **Passo 1: Escrever os testes de estado, ordem e atomicidade**
+- [x] **Passo 1: Escrever os testes de estado, ordem e atomicidade**
 
 Adicionar os imports abaixo em `tests/test_bracelet_transitions.py`:
 
@@ -256,7 +256,7 @@ def test_ativar_rejeita_child_invalido_sem_mutar(child_invalido: object) -> None
     assert obter_estado(bracelet) == estado_anterior
 ```
 
-- [ ] **Passo 2: Executar os novos testes e confirmar RED**
+- [x] **Passo 2: Executar os novos testes e confirmar RED**
 
 ```bash
 poetry run python -m pytest \
@@ -267,7 +267,7 @@ poetry run python -m pytest \
 
 Resultado esperado: erro de importação porque `TransicaoBraceletInvalida` ainda não existe.
 
-- [ ] **Passo 3: Criar a exceção e validar antes de mutar**
+- [x] **Passo 3: Criar a exceção e validar antes de mutar**
 
 Em `app/models/bracelet.py`, adicionar após `BraceletStatus`:
 
@@ -354,7 +354,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Passo 4: Executar todos os testes unitários de transição**
+- [x] **Passo 4: Executar todos os testes unitários de transição**
 
 ```bash
 poetry run python -m pytest tests/test_bracelet_transitions.py -v
@@ -362,7 +362,7 @@ poetry run python -m pytest tests/test_bracelet_transitions.py -v
 
 Resultado esperado: `14 passed` — nove casos de estados inválidos e dois casos de `child` inválido contam separadamente.
 
-- [ ] **Passo 5: Executar Ruff no recorte**
+- [x] **Passo 5: Executar Ruff no recorte**
 
 ```bash
 poetry run ruff check \
@@ -373,7 +373,7 @@ poetry run ruff check \
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 6: Criar commit do ciclo**
+- [x] **Passo 6: Criar commit do ciclo**
 
 ```bash
 git add app/models tests/test_bracelet_transitions.py
@@ -393,7 +393,7 @@ git commit -m "validate Bracelet state transitions"
 - Consome: transições e validação de estado da Tarefa 2.
 - Produz: `InstanteBraceletInvalido` e validação de fuso, presença e ordem temporal.
 
-- [ ] **Passo 1: Escrever os testes temporais e de atomicidade**
+- [x] **Passo 1: Escrever os testes temporais e de atomicidade**
 
 Adicionar `InstanteBraceletInvalido` ao import de `app.models` e adicionar:
 
@@ -482,7 +482,7 @@ def test_revogacao_aceita_instante_igual_a_ativacao(
     assert bracelet.revoked_at == ATIVACAO
 ```
 
-- [ ] **Passo 2: Executar os testes temporais e confirmar RED**
+- [x] **Passo 2: Executar os testes temporais e confirmar RED**
 
 ```bash
 poetry run python -m pytest \
@@ -495,7 +495,7 @@ poetry run python -m pytest \
 
 Resultado esperado: erro de importação porque `InstanteBraceletInvalido` ainda não existe.
 
-- [ ] **Passo 3: Implementar as validações temporais**
+- [x] **Passo 3: Implementar as validações temporais**
 
 Em `app/models/bracelet.py`, adicionar após `TransicaoBraceletInvalida`:
 
@@ -558,7 +558,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Passo 4: Executar todos os testes de transição e confirmar GREEN**
+- [x] **Passo 4: Executar todos os testes de transição e confirmar GREEN**
 
 ```bash
 poetry run python -m pytest tests/test_bracelet_transitions.py -v
@@ -566,7 +566,7 @@ poetry run python -m pytest tests/test_bracelet_transitions.py -v
 
 Resultado esperado: `23 passed`.
 
-- [ ] **Passo 5: Executar Ruff no recorte**
+- [x] **Passo 5: Executar Ruff no recorte**
 
 ```bash
 poetry run ruff check \
@@ -577,7 +577,7 @@ poetry run ruff check \
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 6: Criar commit do ciclo**
+- [x] **Passo 6: Criar commit do ciclo**
 
 ```bash
 git add app/models tests/test_bracelet_transitions.py
@@ -595,7 +595,7 @@ git commit -m "validate Bracelet transition timestamps"
 - Consome: os três métodos finais de `Bracelet`, `session_factory` e schema `0003`.
 - Produz: cobertura de integração para `flush` de `ATIVA`, `DESVINCULADA` e `PERDIDA`.
 
-- [ ] **Passo 1: Escrever o teste de persistência real**
+- [x] **Passo 1: Escrever o teste de persistência real**
 
 Em `tests/test_bracelet_database.py`, substituir o import de `datetime` por:
 
@@ -675,7 +675,7 @@ def test_metodos_de_transicao_produzem_estado_persistivel(
         assert revoked_at == REVOGACAO
 ```
 
-- [ ] **Passo 2: Executar o teste contra PostgreSQL**
+- [x] **Passo 2: Executar o teste contra PostgreSQL**
 
 ```bash
 set -a
@@ -688,7 +688,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 
 Resultado esperado: `3 passed`, um para cada estado resultante.
 
-- [ ] **Passo 3: Executar todos os testes de Bracelet**
+- [x] **Passo 3: Executar todos os testes de Bracelet**
 
 ```bash
 set -a
@@ -703,7 +703,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 
 Resultado esperado: todos os testes de `Bracelet` passam sem skips.
 
-- [ ] **Passo 4: Executar Ruff no teste de integração**
+- [x] **Passo 4: Executar Ruff no teste de integração**
 
 ```bash
 poetry run ruff check tests/test_bracelet_database.py
@@ -711,7 +711,7 @@ poetry run ruff check tests/test_bracelet_database.py
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 5: Criar commit do ciclo**
+- [x] **Passo 5: Criar commit do ciclo**
 
 ```bash
 git add tests/test_bracelet_database.py
@@ -730,7 +730,7 @@ git commit -m "test persisted Bracelet transitions"
 - Consome: comportamento implementado e verificado nas tarefas anteriores.
 - Produz: estado atual documentado sem antecipar serviços ou endpoints.
 
-- [ ] **Passo 1: Atualizar somente o estado implementado**
+- [x] **Passo 1: Atualizar somente o estado implementado**
 
 Em `docs/PROJECT_CONTEXT.md`, após o item dos testes de integração de `Bracelet`, adicionar:
 
@@ -753,11 +753,11 @@ implementada. Qualquer serviço, endpoint, schema ou nova entidade exige novo
 recorte técnico aprovado.
 ```
 
-- [ ] **Passo 2: Marcar o plano como executado**
+- [x] **Passo 2: Marcar o plano como executado**
 
-Substituir mecanicamente todos os checkboxes `- [ ]` deste arquivo por `- [x]`.
+Substituir mecanicamente todos os checkboxes `- [x]` deste arquivo por `- [x]`.
 
-- [ ] **Passo 3: Executar a suíte completa com PostgreSQL**
+- [x] **Passo 3: Executar a suíte completa com PostgreSQL**
 
 ```bash
 set -a
@@ -768,7 +768,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest -v
 
 Resultado esperado: todos os testes passam, sem skips de integração e sem warnings inesperados.
 
-- [ ] **Passo 4: Executar Ruff global**
+- [x] **Passo 4: Executar Ruff global**
 
 ```bash
 poetry run ruff check .
@@ -776,7 +776,7 @@ poetry run ruff check .
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Passo 5: Confirmar ausência de mudança no schema**
+- [x] **Passo 5: Confirmar ausência de mudança no schema**
 
 ```bash
 set -a
@@ -788,7 +788,7 @@ poetry run alembic current
 
 Resultado esperado: `No new upgrade operations detected.` e `0003 (head)`.
 
-- [ ] **Passo 6: Revisar escopo e estado Git**
+- [x] **Passo 6: Revisar escopo e estado Git**
 
 ```bash
 git diff --check
@@ -798,7 +798,7 @@ git diff --stat HEAD
 
 Resultado esperado: somente modelo, exportações, testes, contexto e plano das transições; nenhuma migration ou camada HTTP nova.
 
-- [ ] **Passo 7: Criar commit documental**
+- [x] **Passo 7: Criar commit documental**
 
 ```bash
 git add \
@@ -807,7 +807,7 @@ git add \
 git commit -m "document Bracelet state transitions"
 ```
 
-- [ ] **Passo 8: Apresentar o resultado e parar**
+- [x] **Passo 8: Apresentar o resultado e parar**
 
 Informar os arquivos alterados, quantidade de testes, resultado do Ruff,
 resultado de `alembic check`, revisão atual e confirmação de que nenhuma

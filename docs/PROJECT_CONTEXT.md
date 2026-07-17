@@ -336,6 +336,11 @@ postgresql+asyncpg://<usuario>:<senha>@127.0.0.1:5433/<banco>
   alterar `children`.
 - Defaults e constraints de `Bracelet` validados no PostgreSQL local por testes
   de integração condicionados a `TEST_DATABASE_URL`.
+- Transições de domínio `ESTOQUE → ATIVA`, `ATIVA → DESVINCULADA` e
+  `ATIVA → PERDIDA` implementadas na entidade `Bracelet`, com validação de
+  estado, fuso horário, ordem temporal e atomicidade em memória.
+- Exceções tipadas de transição e instante inválido não expõem identificadores
+  nem dados pessoais.
 
 ### Comandos de migrations
 
@@ -353,7 +358,7 @@ suíte volta a ser coletada e executada integralmente.
 
 ## Próximo recorte
 
-O modelo físico de `Bracelet` está concluído. As operações de ativação,
-desvinculação e perda ainda não foram implementadas e exigem novo recorte
-técnico aprovado. Qualquer nova entidade, campo, endpoint ou serviço também
-deve ser apresentado e aprovado separadamente.
+As transições de domínio de `Bracelet` estão concluídas. A camada de aplicação
+que controlará sessão, transação e tratamento de concorrência ainda não foi
+implementada. Qualquer serviço, endpoint, schema ou nova entidade exige novo
+recorte técnico aprovado.
