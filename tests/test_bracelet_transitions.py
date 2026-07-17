@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
 from uuid import uuid4
 
 import pytest
@@ -13,6 +13,11 @@ from app.models import (
 
 ATIVACAO = datetime(2026, 1, 15, 12, tzinfo=UTC)
 REVOGACAO = ATIVACAO + timedelta(hours=1)
+
+
+class FusoSemOffset(tzinfo):
+    def utcoffset(self, dt: datetime | None) -> None:
+        return None
 
 
 def obter_estado(bracelet: Bracelet) -> tuple[object, ...]:
@@ -153,6 +158,21 @@ def test_ativar_rejeita_instante_sem_fuso_sem_mutar() -> None:
     assert obter_estado(bracelet) == estado_anterior
 
 
+def test_ativar_rejeita_fuso_sem_offset_sem_mutar() -> None:
+    child = Child(id=uuid4())
+    bracelet = Bracelet(status=BraceletStatus.ESTOQUE)
+    estado_anterior = obter_estado(bracelet)
+    instante = datetime(2026, 1, 15, 12, tzinfo=FusoSemOffset())
+
+    with pytest.raises(
+        InstanteBraceletInvalido,
+        match="instante deve possuir fuso horário",
+    ):
+        bracelet.ativar(child, instante)
+
+    assert obter_estado(bracelet) == estado_anterior
+
+
 @pytest.mark.parametrize("metodo", ["desvincular", "marcar_como_perdida"])
 def test_revogacao_rejeita_instante_sem_fuso_sem_mutar(metodo: str) -> None:
     bracelet, _ = criar_bracelet_ativa()
@@ -163,6 +183,26 @@ def test_revogacao_rejeita_instante_sem_fuso_sem_mutar(metodo: str) -> None:
         match="instante deve possuir fuso horário",
     ):
         getattr(bracelet, metodo)(datetime(2026, 1, 15, 13))
+
+    assert obter_estado(bracelet) == estado_anterior
+
+
+@pytest.mark.parametrize("metodo", ["desvincular", "marcar_como_perdida"])
+def test_revogacao_rejeita_ativacao_sem_fuso_sem_mutar(metodo: str) -> None:
+    child = Child(id=uuid4())
+    bracelet = Bracelet(
+        status=BraceletStatus.ATIVA,
+        child=child,
+        child_id=child.id,
+        activated_at=datetime(2026, 1, 15, 12),
+    )
+    estado_anterior = obter_estado(bracelet)
+
+    with pytest.raises(
+        InstanteBraceletInvalido,
+        match="instante deve possuir fuso horário",
+    ):
+        getattr(bracelet, metodo)(REVOGACAO)
 
     assert obter_estado(bracelet) == estado_anterior
 

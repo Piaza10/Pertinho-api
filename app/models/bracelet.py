@@ -50,6 +50,7 @@ def _validar_instante_de_revogacao(
         raise InstanteBraceletInvalido(
             "Uma pulseira ATIVA deve possuir activated_at",
         )
+    _validar_instante_com_fuso(activated_at)
     if instante < activated_at:
         raise InstanteBraceletInvalido(
             "A revogação não pode ser anterior à ativação",
