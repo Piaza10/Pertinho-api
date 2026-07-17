@@ -12,6 +12,11 @@ class RecursoAtivacaoNaoEncontrado(LookupError):
         super().__init__("Recurso de ativação não encontrado")
 
 
+class ConflitoAtivacaoBracelet(ValueError):
+    def __init__(self) -> None:
+        super().__init__("Criança já possui pulseira vinculada")
+
+
 async def ativar_bracelet(
     sessao: AsyncSession,
     bracelet_id: UUID,
@@ -27,6 +32,15 @@ async def ativar_bracelet(
 
         if child is None or bracelet is None:
             raise RecursoAtivacaoNaoEncontrado
+
+        outra_bracelet_id = await sessao.scalar(
+            select(Bracelet.id).where(
+                Bracelet.child_id == child_id,
+                Bracelet.id != bracelet_id,
+            ),
+        )
+        if outra_bracelet_id is not None:
+            raise ConflitoAtivacaoBracelet
 
         bracelet.ativar(child, datetime.now(UTC))
         await sessao.flush()
