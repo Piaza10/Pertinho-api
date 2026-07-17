@@ -60,3 +60,21 @@ class Bracelet(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     child: Mapped[Child | None] = relationship()
+
+    def ativar(self, child: Child, instante: datetime) -> None:
+        self.status = BraceletStatus.ATIVA
+        self.child = child
+        self.activated_at = instante
+        self.revoked_at = None
+
+    def desvincular(self, instante: datetime) -> None:
+        self.status = BraceletStatus.DESVINCULADA
+        self.child = None
+        self.child_id = None
+        self.revoked_at = instante
+
+    def marcar_como_perdida(self, instante: datetime) -> None:
+        self.status = BraceletStatus.PERDIDA
+        self.child = None
+        self.child_id = None
+        self.revoked_at = instante
