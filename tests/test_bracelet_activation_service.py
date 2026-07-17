@@ -289,8 +289,9 @@ async def executar_prova_de_bloqueio_child() -> None:
         assert resultado.status is BraceletStatus.ATIVA
         assert resultado.child_id == child_id
     finally:
-        if tarefa is not None and not tarefa.done():
-            tarefa.cancel()
+        if tarefa is not None:
+            if not tarefa.done():
+                tarefa.cancel()
             await asyncio.gather(tarefa, return_exceptions=True)
         await limpar_tabelas()
         await engine.dispose()
@@ -345,6 +346,7 @@ async def executar_prova_da_ordem_das_consultas() -> None:
 
 
 async def executar_ativacoes_concorrentes() -> None:
+    tarefas: list[asyncio.Task[str]] = []
     try:
         await limpar_tabelas()
         async with session_factory.begin() as sessao:
@@ -401,6 +403,11 @@ async def executar_ativacoes_concorrentes() -> None:
             if bracelet is not None
         ) == 1
     finally:
+        for tarefa in tarefas:
+            if not tarefa.done():
+                tarefa.cancel()
+        if tarefas:
+            await asyncio.gather(*tarefas, return_exceptions=True)
         await limpar_tabelas()
         await engine.dispose()
 
