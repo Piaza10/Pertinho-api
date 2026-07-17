@@ -30,6 +30,32 @@ class TransicaoBraceletInvalida(ValueError):
         )
 
 
+class InstanteBraceletInvalido(ValueError):
+    pass
+
+
+def _validar_instante_com_fuso(instante: datetime) -> None:
+    if instante.tzinfo is None or instante.utcoffset() is None:
+        raise InstanteBraceletInvalido(
+            "O instante deve possuir fuso horário",
+        )
+
+
+def _validar_instante_de_revogacao(
+    activated_at: datetime | None,
+    instante: datetime,
+) -> None:
+    _validar_instante_com_fuso(instante)
+    if activated_at is None:
+        raise InstanteBraceletInvalido(
+            "Uma pulseira ATIVA deve possuir activated_at",
+        )
+    if instante < activated_at:
+        raise InstanteBraceletInvalido(
+            "A revogação não pode ser anterior à ativação",
+        )
+
+
 def gerar_token_publico() -> str:
     return token_urlsafe(32)
 
@@ -89,6 +115,7 @@ class Bracelet(Base):
         )
         if not isinstance(child, Child):
             raise TypeError("child deve ser uma instância de Child")
+        _validar_instante_com_fuso(instante)
 
         self.status = BraceletStatus.ATIVA
         self.child = child
@@ -100,6 +127,7 @@ class Bracelet(Base):
             BraceletStatus.ATIVA,
             BraceletStatus.DESVINCULADA,
         )
+        _validar_instante_de_revogacao(self.activated_at, instante)
 
         self.status = BraceletStatus.DESVINCULADA
         self.child = None
@@ -111,6 +139,7 @@ class Bracelet(Base):
             BraceletStatus.ATIVA,
             BraceletStatus.PERDIDA,
         )
+        _validar_instante_de_revogacao(self.activated_at, instante)
 
         self.status = BraceletStatus.PERDIDA
         self.child = None

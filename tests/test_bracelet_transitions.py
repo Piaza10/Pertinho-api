@@ -7,6 +7,7 @@ from app.models import (
     Bracelet,
     BraceletStatus,
     Child,
+    InstanteBraceletInvalido,
     TransicaoBraceletInvalida,
 )
 
@@ -135,3 +136,87 @@ def test_ativar_rejeita_child_invalido_sem_mutar(child_invalido: object) -> None
         bracelet.ativar(child_invalido, ATIVACAO)  # type: ignore[arg-type]
 
     assert obter_estado(bracelet) == estado_anterior
+
+
+def test_ativar_rejeita_instante_sem_fuso_sem_mutar() -> None:
+    child = Child(id=uuid4())
+    bracelet = Bracelet(status=BraceletStatus.ESTOQUE)
+    estado_anterior = obter_estado(bracelet)
+
+    with pytest.raises(
+        InstanteBraceletInvalido,
+        match="instante deve possuir fuso horário",
+    ) as erro:
+        bracelet.ativar(child, datetime(2026, 1, 15, 12))
+
+    assert str(child.id) not in str(erro.value)
+    assert obter_estado(bracelet) == estado_anterior
+
+
+@pytest.mark.parametrize("metodo", ["desvincular", "marcar_como_perdida"])
+def test_revogacao_rejeita_instante_sem_fuso_sem_mutar(metodo: str) -> None:
+    bracelet, _ = criar_bracelet_ativa()
+    estado_anterior = obter_estado(bracelet)
+
+    with pytest.raises(
+        InstanteBraceletInvalido,
+        match="instante deve possuir fuso horário",
+    ):
+        getattr(bracelet, metodo)(datetime(2026, 1, 15, 13))
+
+    assert obter_estado(bracelet) == estado_anterior
+
+
+@pytest.mark.parametrize("metodo", ["desvincular", "marcar_como_perdida"])
+def test_revogacao_rejeita_ausencia_de_ativacao_sem_mutar(metodo: str) -> None:
+    child = Child(id=uuid4())
+    bracelet = Bracelet(
+        status=BraceletStatus.ATIVA,
+        child=child,
+        child_id=child.id,
+        activated_at=None,
+    )
+    estado_anterior = obter_estado(bracelet)
+
+    with pytest.raises(
+        InstanteBraceletInvalido,
+        match="pulseira ATIVA deve possuir activated_at",
+    ):
+        getattr(bracelet, metodo)(REVOGACAO)
+
+    assert obter_estado(bracelet) == estado_anterior
+
+
+@pytest.mark.parametrize("metodo", ["desvincular", "marcar_como_perdida"])
+def test_revogacao_rejeita_instante_anterior_a_ativacao_sem_mutar(
+    metodo: str,
+) -> None:
+    bracelet, _ = criar_bracelet_ativa()
+    estado_anterior = obter_estado(bracelet)
+
+    with pytest.raises(
+        InstanteBraceletInvalido,
+        match="revogação não pode ser anterior à ativação",
+    ):
+        getattr(bracelet, metodo)(ATIVACAO - timedelta(seconds=1))
+
+    assert obter_estado(bracelet) == estado_anterior
+
+
+@pytest.mark.parametrize(
+    ("metodo", "status_esperado"),
+    [
+        ("desvincular", BraceletStatus.DESVINCULADA),
+        ("marcar_como_perdida", BraceletStatus.PERDIDA),
+    ],
+)
+def test_revogacao_aceita_instante_igual_a_ativacao(
+    metodo: str,
+    status_esperado: BraceletStatus,
+) -> None:
+    bracelet, _ = criar_bracelet_ativa()
+
+    getattr(bracelet, metodo)(ATIVACAO)
+
+    assert bracelet.status is status_esperado
+    assert bracelet.revoked_at == ATIVACAO
