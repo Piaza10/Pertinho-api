@@ -755,7 +755,8 @@ recorte técnico aprovado.
 
 - [x] **Passo 2: Marcar o plano como executado**
 
-Substituir mecanicamente todos os checkboxes `- [x]` deste arquivo por `- [x]`.
+Marcar mecanicamente todos os checkboxes pendentes deste arquivo como
+concluídos.
 
 - [x] **Passo 3: Executar a suíte completa com PostgreSQL**
 
