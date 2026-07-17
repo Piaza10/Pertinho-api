@@ -494,11 +494,136 @@ git commit -m "validate Bracelet activation service errors"
 - Produces: bloqueio pessimista de `Child` seguido por `Bracelet`, ambos com
   `SELECT ... FOR UPDATE`.
 
-- [ ] **Step 1: Adicionar teste com duas sessões concorrentes**
+- [ ] **Step 1: Adicionar provas reais de bloqueio e concorrência**
+
+No topo de `tests/test_bracelet_activation_service.py`, substituir o import
+do SQLAlchemy por:
+
+```python
+from sqlalchemy import delete, event, select, text
+```
 
 Adicionar ao final de `tests/test_bracelet_activation_service.py`:
 
 ```python
+async def aguardar_espera_por_lock(
+    backend_pid: int,
+    tarefa: asyncio.Task[Bracelet],
+) -> bool:
+    for _ in range(100):
+        if tarefa.done():
+            return False
+        async with session_factory() as monitor:
+            esperando = await monitor.scalar(
+                text(
+                    "SELECT wait_event_type = 'Lock' "
+                    "FROM pg_stat_activity WHERE pid = :pid",
+                ),
+                {"pid": backend_pid},
+            )
+        if esperando is True:
+            return True
+        await asyncio.sleep(0.01)
+    return False
+
+
+async def executar_prova_de_bloqueio_child() -> None:
+    tarefa: asyncio.Task[Bracelet] | None = None
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child = Child()
+            bracelet = Bracelet()
+            sessao.add_all([child, bracelet])
+            await sessao.flush()
+            child_id = child.id
+            bracelet_id = bracelet.id
+
+        async with (
+            session_factory() as bloqueadora,
+            session_factory() as servico,
+        ):
+            async with bloqueadora.begin():
+                await bloqueadora.scalar(
+                    select(Child)
+                    .where(Child.id == child_id)
+                    .with_for_update(),
+                )
+
+                backend_pid = await servico.scalar(
+                    text("SELECT pg_backend_pid()"),
+                )
+                assert backend_pid is not None
+                await servico.rollback()
+                tarefa = asyncio.create_task(
+                    ativar_bracelet(servico, bracelet_id, child_id),
+                )
+                esperou_pelo_lock = await aguardar_espera_por_lock(
+                    backend_pid,
+                    tarefa,
+                )
+
+            resultado = await tarefa
+
+        assert esperou_pelo_lock is True
+        assert resultado.status is BraceletStatus.ATIVA
+        assert resultado.child_id == child_id
+    finally:
+        if tarefa is not None and not tarefa.done():
+            tarefa.cancel()
+            await asyncio.gather(tarefa, return_exceptions=True)
+        await limpar_tabelas()
+        await engine.dispose()
+
+
+async def executar_prova_da_ordem_das_consultas() -> None:
+    consultas: list[str] = []
+
+    def registrar_consulta(
+        _conexao: object,
+        _cursor: object,
+        statement: str,
+        _parametros: object,
+        _contexto: object,
+        _executemany: bool,
+    ) -> None:
+        if statement.lstrip().startswith("SELECT"):
+            consultas.append(" ".join(statement.split()))
+
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child = Child()
+            bracelet = Bracelet()
+            sessao.add_all([child, bracelet])
+            await sessao.flush()
+            child_id = child.id
+            bracelet_id = bracelet.id
+
+        event.listen(
+            engine.sync_engine,
+            "before_cursor_execute",
+            registrar_consulta,
+        )
+        try:
+            async with session_factory() as sessao:
+                await ativar_bracelet(sessao, bracelet_id, child_id)
+        finally:
+            event.remove(
+                engine.sync_engine,
+                "before_cursor_execute",
+                registrar_consulta,
+            )
+
+        assert "FROM children" in consultas[0]
+        assert "FOR UPDATE" in consultas[0]
+        assert "FROM bracelets" in consultas[1]
+        assert "FOR UPDATE" in consultas[1]
+    finally:
+        await limpar_tabelas()
+        await engine.dispose()
+
+
 async def executar_ativacoes_concorrentes() -> None:
     try:
         await limpar_tabelas()
@@ -561,24 +686,38 @@ async def executar_ativacoes_concorrentes() -> None:
 
 
 @requer_banco_de_teste
+def test_ativacao_aguarda_bloqueio_pessimista_da_child() -> None:
+    asyncio.run(executar_prova_de_bloqueio_child())
+
+
+@requer_banco_de_teste
+def test_bloqueia_child_antes_de_bracelet() -> None:
+    asyncio.run(executar_prova_da_ordem_das_consultas())
+
+
+@requer_banco_de_teste
 def test_serializa_duas_ativacoes_para_a_mesma_child() -> None:
     asyncio.run(executar_ativacoes_concorrentes())
 ```
 
-- [ ] **Step 2: Executar o teste concorrente e confirmar RED**
+- [ ] **Step 2: Executar a prova de bloqueio e confirmar RED determinístico**
 
 ```bash
 set -a
 source .env
 set +a
 TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
-  tests/test_bracelet_activation_service.py::test_serializa_duas_ativacoes_para_a_mesma_child \
+  tests/test_bracelet_activation_service.py::test_ativacao_aguarda_bloqueio_pessimista_da_child \
+  tests/test_bracelet_activation_service.py::test_bloqueia_child_antes_de_bracelet \
   -v
 ```
 
-Resultado esperado: falha porque as duas transações podem observar ausência de
-vínculo antes do `flush`; a perdedora produz `IntegrityError`, não o conflito
-tipado esperado.
+Resultado esperado: `2 failed`. Sem `FOR UPDATE` na consulta de `Child`, a
+tarefa termina antes de aparecer como espera por lock no PostgreSQL. A captura
+do SQL real também comprova que as consultas ainda não contêm `FOR UPDATE` na
+ordem `Child` seguida por `Bracelet`. O teste concorrente permanece como
+aceitação funcional, mas não é usado isoladamente como evidência RED porque
+seu escalonamento não determina a janela entre consulta e `flush`.
 
 - [ ] **Step 3: Adicionar os bloqueios na ordem aprovada**
 
@@ -601,7 +740,7 @@ iniciais por:
 Manter a consulta de vínculo existente depois desses dois bloqueios e antes de
 `bracelet.ativar(...)`.
 
-- [ ] **Step 4: Repetir o teste concorrente e executar todos os testes do serviço**
+- [ ] **Step 4: Repetir concorrência e executar todos os testes do serviço**
 
 ```bash
 set -a
@@ -620,7 +759,7 @@ poetry run ruff check \
 ```
 
 Resultado esperado: cinco repetições com `1 passed`, arquivo focado com
-`6 passed` e Ruff com `All checks passed!`.
+`8 passed` e Ruff com `All checks passed!`.
 
 - [ ] **Step 5: Criar commit da concorrência**
 
@@ -681,7 +820,7 @@ set +a
 TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest -v
 ```
 
-Resultado esperado: `68 passed`, sem skips e sem warnings inesperados.
+Resultado esperado: `70 passed`, sem skips e sem warnings inesperados.
 
 - [ ] **Step 4: Executar Ruff global**
 
