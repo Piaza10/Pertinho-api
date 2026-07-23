@@ -55,7 +55,7 @@ pytest, pytest-asyncio, Poetry, Alembic e Ruff.
   `trocar_bracelet(...)`, `RecursoTrocaNaoEncontrado` e
   `BraceletsTrocaIguais`.
 
-- [ ] **Step 1: Criar os testes funcionais PostgreSQL**
+- [x] **Step 1: Criar os testes funcionais PostgreSQL**
 
 Criar `tests/test_bracelet_replacement_service.py`:
 
@@ -395,7 +395,7 @@ def test_reverte_desvinculacao_quando_nova_bracelet_e_invalida(
     asyncio.run(executar_estado_novo_invalido(status))
 ```
 
-- [ ] **Step 2: Executar e confirmar RED**
+- [x] **Step 2: Executar e confirmar RED**
 
 ```bash
 set -a
@@ -411,7 +411,7 @@ Resultado esperado: erro de coleta porque
 um módulo vazio, a coleta deve falhar pelos símbolos ausentes, nunca por
 conexão com `pertinho`.
 
-- [ ] **Step 3: Implementar o serviço transacional sem locks**
+- [x] **Step 3: Implementar o serviço transacional sem locks**
 
 Criar `app/services/bracelet_replacement.py`:
 
@@ -492,7 +492,7 @@ async def trocar_bracelet(
     return anterior, nova
 ```
 
-- [ ] **Step 4: Executar GREEN focado e Ruff**
+- [x] **Step 4: Executar GREEN focado e Ruff**
 
 ```bash
 set -a
@@ -508,7 +508,7 @@ poetry run ruff check \
 
 Resultado esperado: `10 passed` e `All checks passed!`.
 
-- [ ] **Step 5: Criar commit**
+- [x] **Step 5: Criar commit**
 
 ```bash
 git add \
@@ -529,7 +529,7 @@ git commit -m "add transactional Bracelet replacement service"
 - Produces: locks determinísticos
   `Child → Bracelet menor → Bracelet maior`.
 
-- [ ] **Step 1: Adicionar testes de locks e corrida determinística**
+- [x] **Step 1: Adicionar testes de locks e corrida determinística**
 
 Alterar os imports de `tests/test_bracelet_replacement_service.py`:
 
@@ -718,7 +718,7 @@ def test_serializa_duas_trocas_da_mesma_bracelet() -> None:
     asyncio.run(executar_trocas_concorrentes())
 ```
 
-- [ ] **Step 2: Executar e confirmar RED**
+- [x] **Step 2: Executar e confirmar RED**
 
 ```bash
 set -a
@@ -740,7 +740,7 @@ Resultado esperado:
 Se o teste concorrente não produzir RED pelo motivo descrito, não implementar
 locks ainda: corrigir a barreira até a falha ser determinística.
 
-- [ ] **Step 3: Implementar locks na ordem global**
+- [x] **Step 3: Implementar locks na ordem global**
 
 Substituir `app/services/bracelet_replacement.py` por:
 
@@ -825,7 +825,7 @@ async def trocar_bracelet(
     return anterior, nova
 ```
 
-- [ ] **Step 4: Executar GREEN, repetições e Ruff**
+- [x] **Step 4: Executar GREEN, repetições e Ruff**
 
 ```bash
 set -a
@@ -851,7 +851,7 @@ poetry run ruff check \
 Resultado esperado: `2 passed`, cinco repetições verdes, `12 passed` no
 arquivo e `All checks passed!`.
 
-- [ ] **Step 5: Criar commit**
+- [x] **Step 5: Criar commit**
 
 ```bash
 git add \
@@ -871,7 +871,7 @@ git commit -m "serialize concurrent Bracelet replacements"
 - Produces: `ConflitoTrocaBracelet`, revalidação do vínculo e prova
   PostgreSQL do rollback integral.
 
-- [ ] **Step 1: Adicionar teste controlado de mudança de vínculo**
+- [x] **Step 1: Adicionar teste controlado de mudança de vínculo**
 
 Alterar os imports SQLAlchemy do teste:
 
@@ -1021,7 +1021,7 @@ def test_rejeita_mudanca_concorrente_do_vinculo() -> None:
     asyncio.run(executar_mudanca_concorrente_de_vinculo())
 ```
 
-- [ ] **Step 2: Executar e confirmar RED**
+- [x] **Step 2: Executar e confirmar RED**
 
 ```bash
 set -a
@@ -1036,7 +1036,7 @@ TEST_DATABASE_URL="$DATABASE_URL_TESTE" poetry run python -m pytest \
 Resultado esperado: erro de coleta porque `ConflitoTrocaBracelet` ainda não
 existe no serviço.
 
-- [ ] **Step 3: Implementar exceção e revalidação mínimas**
+- [x] **Step 3: Implementar exceção e revalidação mínimas**
 
 Adicionar antes de `trocar_bracelet` em
 `app/services/bracelet_replacement.py`:
@@ -1059,7 +1059,7 @@ if anterior.child_id != child_id_inicial:
 
 Não adicionar nova exceção, retry, log ou abstração.
 
-- [ ] **Step 4: Executar GREEN, arquivo completo, suíte e Ruff**
+- [x] **Step 4: Executar GREEN, arquivo completo, suíte e Ruff**
 
 ```bash
 set -a
@@ -1078,7 +1078,7 @@ poetry run ruff check .
 Resultado esperado: `1 passed`, `13 passed`, `91 passed` e
 `All checks passed!`.
 
-- [ ] **Step 5: Criar commit**
+- [x] **Step 5: Criar commit**
 
 ```bash
 git add \
@@ -1097,7 +1097,7 @@ git commit -m "verify concurrent Bracelet replacement link changes"
 - Consumes: comportamento aprovado nas Tasks 1 a 3.
 - Produces: estado atual documentado sem antecipar HTTP ou autorização.
 
-- [ ] **Step 1: Atualizar o estado implementado**
+- [x] **Step 1: Atualizar o estado implementado**
 
 Depois dos itens do serviço de perda em `docs/PROJECT_CONTEXT.md`, adicionar:
 
@@ -1119,12 +1119,12 @@ Os serviços transacionais internos de ativação, perda e troca planejada de
 implementados e exigem novo recorte técnico aprovado.
 ```
 
-- [ ] **Step 2: Marcar somente os checkboxes dos passos**
+- [x] **Step 2: Marcar somente os checkboxes dos passos**
 
 Marcar os 23 checkboxes deste plano como concluídos. Preservar exemplos,
 resultados RED históricos e todo o restante do texto.
 
-- [ ] **Step 3: Executar a suíte completa no banco isolado**
+- [x] **Step 3: Executar a suíte completa no banco isolado**
 
 ```bash
 set -a
@@ -1136,7 +1136,7 @@ TEST_DATABASE_URL="$DATABASE_URL_TESTE" poetry run python -m pytest -v
 
 Resultado esperado: `91 passed`, sem skips ou warnings inesperados.
 
-- [ ] **Step 4: Executar Ruff global**
+- [x] **Step 4: Executar Ruff global**
 
 ```bash
 poetry run ruff check .
@@ -1144,7 +1144,7 @@ poetry run ruff check .
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Step 5: Confirmar ausência de mudança no schema**
+- [x] **Step 5: Confirmar ausência de mudança no schema**
 
 ```bash
 set -a
@@ -1157,7 +1157,7 @@ DATABASE_URL="$DATABASE_URL_TESTE" poetry run alembic current
 
 Resultado esperado: `No new upgrade operations detected.` e `0003 (head)`.
 
-- [ ] **Step 6: Revisar escopo e Git**
+- [x] **Step 6: Revisar escopo e Git**
 
 ```bash
 git diff --check
@@ -1168,7 +1168,7 @@ git diff --name-only 89c02b3..HEAD
 Resultado esperado: serviço, teste, contexto e plano. Nenhum modelo,
 migration, endpoint, schema ou serviço existente deve aparecer.
 
-- [ ] **Step 7: Criar commit documental**
+- [x] **Step 7: Criar commit documental**
 
 ```bash
 git add \
@@ -1177,7 +1177,7 @@ git add \
 git commit -m "document Bracelet replacement service"
 ```
 
-- [ ] **Step 8: Apresentar e parar**
+- [x] **Step 8: Apresentar e parar**
 
 Informar arquivos, commits, RED/GREEN, testes, Ruff, Alembic, revisão e limites
 de escopo. Parar e aguardar aprovação explícita para qualquer endpoint,

@@ -352,6 +352,11 @@ postgresql+asyncpg://<usuario>:<senha>@127.0.0.1:5433/<banco>
   interno e rollback automático.
 - Perdas simultâneas e mudança concorrente de vínculo são tratadas com estado
   final consistente e exceções sem identificadores ou dados pessoais.
+- Serviço transacional de troca planejada de `Bracelet` implementado com
+  instante UTC único, locks `Child → Bracelets por UUID`, dois `flushes` e
+  rollback integral.
+- Trocas simultâneas e mudanças concorrentes de vínculo são serializadas ou
+  rejeitadas com estado final consistente e mensagens neutras.
 
 ### Comandos de migrations
 
@@ -369,6 +374,6 @@ suíte volta a ser coletada e executada integralmente.
 
 ## Próximo recorte
 
-Os serviços transacionais de ativação e perda de `Bracelet` estão concluídos.
-A troca planejada, assim como endpoints, schemas e autorização, ainda não foi
-implementada e exige novo recorte técnico aprovado.
+Os serviços transacionais internos de ativação, perda e troca planejada de
+`Bracelet` estão concluídos. Endpoints, schemas e autorização ainda não foram
+implementados e exigem novo recorte técnico aprovado.
