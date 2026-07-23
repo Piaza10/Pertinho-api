@@ -367,14 +367,12 @@ async def executar_trocas_concorrentes() -> None:
             return self._sessao.begin()
 
         async def execute(self, statement: Any) -> Any:
-            return await self._sessao.execute(statement)
-
-        async def scalar(self, statement: Any) -> Any:
             nonlocal leituras_da_anterior
-            resultado = await self._sessao.scalar(statement)
+            resultado = await self._sessao.execute(statement)
             sql = str(statement)
             if (
-                "FROM bracelets" in sql
+                "SELECT bracelets.status, bracelets.child_id" in sql
+                and "FROM bracelets" in sql
                 and "FOR UPDATE" not in sql
                 and leituras_da_anterior < 2
             ):
@@ -384,6 +382,9 @@ async def executar_trocas_concorrentes() -> None:
                 async with asyncio.timeout(5):
                     await duas_leituras_da_anterior.wait()
             return resultado
+
+        async def scalar(self, statement: Any) -> Any:
+            return await self._sessao.scalar(statement)
 
         async def flush(self) -> None:
             await self._sessao.flush()
