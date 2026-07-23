@@ -347,6 +347,11 @@ postgresql+asyncpg://<usuario>:<senha>@127.0.0.1:5433/<banco>
 - Ativações concorrentes para a mesma criança são serializadas no PostgreSQL;
   recursos ausentes e conflitos usam exceções neutras sem identificadores ou
   dados pessoais.
+- Serviço de aplicação para marcar `Bracelet` como perdida implementado com
+  pré-leitura de colunas, revalidação sob locks `Child → Bracelet`, instante UTC
+  interno e rollback automático.
+- Perdas simultâneas e mudança concorrente de vínculo são tratadas com estado
+  final consistente e exceções sem identificadores ou dados pessoais.
 
 ### Comandos de migrations
 
@@ -364,6 +369,6 @@ suíte volta a ser coletada e executada integralmente.
 
 ## Próximo recorte
 
-O serviço transacional de ativação de `Bracelet` está concluído. Os casos de
-uso de desvinculação e perda, assim como endpoints, schemas e autorização,
-ainda não foram implementados e exigem novo recorte técnico aprovado.
+Os serviços transacionais de ativação e perda de `Bracelet` estão concluídos.
+A troca planejada, assim como endpoints, schemas e autorização, ainda não foi
+implementada e exige novo recorte técnico aprovado.

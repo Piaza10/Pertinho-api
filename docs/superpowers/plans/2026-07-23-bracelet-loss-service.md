@@ -49,7 +49,7 @@ pytest, pytest-asyncio, Poetry, Alembic e Ruff.
 - Produces: `marcar_bracelet_como_perdida(...)` e
   `RecursoPerdaNaoEncontrado`.
 
-- [ ] **Step 1: Criar testes PostgreSQL que falham sem o serviço**
+- [x] **Step 1: Criar testes PostgreSQL que falham sem o serviço**
 
 Criar `tests/test_bracelet_loss_service.py`:
 
@@ -218,7 +218,7 @@ def test_preserva_transicao_invalida_e_estado_persistido(
     asyncio.run(executar_estado_invalido(status))
 ```
 
-- [ ] **Step 2: Executar e confirmar RED**
+- [x] **Step 2: Executar e confirmar RED**
 
 ```bash
 set -a
@@ -231,7 +231,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 Resultado esperado: falha na coleta com `ModuleNotFoundError` para
 `app.services.bracelet_loss`.
 
-- [ ] **Step 3: Implementar pré-leitura e transação mínimas**
+- [x] **Step 3: Implementar pré-leitura e transação mínimas**
 
 Criar `app/services/bracelet_loss.py`:
 
@@ -277,7 +277,7 @@ async def marcar_bracelet_como_perdida(
     return bracelet
 ```
 
-- [ ] **Step 4: Executar GREEN focado e Ruff**
+- [x] **Step 4: Executar GREEN focado e Ruff**
 
 ```bash
 set -a
@@ -291,7 +291,7 @@ poetry run ruff check \
 
 Resultado esperado: `5 passed` e `All checks passed!`.
 
-- [ ] **Step 5: Criar commit**
+- [x] **Step 5: Criar commit**
 
 ```bash
 git add app/services/bracelet_loss.py tests/test_bracelet_loss_service.py
@@ -308,7 +308,7 @@ git commit -m "add transactional Bracelet loss service"
 - Consumes: serviço e erro da Task 1.
 - Produces: locks `Child → Bracelet` e serialização da mesma pulseira.
 
-- [ ] **Step 1: Adicionar teste da ordem SQL e concorrência**
+- [x] **Step 1: Adicionar teste da ordem SQL e concorrência**
 
 Em `tests/test_bracelet_loss_service.py`, substituir o import SQLAlchemy por:
 
@@ -437,7 +437,7 @@ def test_serializa_duas_perdas_da_mesma_bracelet() -> None:
     asyncio.run(executar_perdas_concorrentes())
 ```
 
-- [ ] **Step 2: Executar novos testes e confirmar RED**
+- [x] **Step 2: Executar novos testes e confirmar RED**
 
 ```bash
 set -a
@@ -452,7 +452,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 Resultado esperado: falhas por ausência dos dois `FOR UPDATE` e por duas
 transações poderem concluir sem serialização.
 
-- [ ] **Step 3: Implementar locks na ordem aprovada**
+- [x] **Step 3: Implementar locks na ordem aprovada**
 
 Substituir `app/services/bracelet_loss.py` por:
 
@@ -510,7 +510,7 @@ async def marcar_bracelet_como_perdida(
     return bracelet
 ```
 
-- [ ] **Step 4: Executar GREEN, repetições e Ruff**
+- [x] **Step 4: Executar GREEN, repetições e Ruff**
 
 ```bash
 set -a
@@ -530,7 +530,7 @@ poetry run ruff check \
 Resultado esperado: cinco repetições com `1 passed`, arquivo com `7 passed`
 e Ruff limpo.
 
-- [ ] **Step 5: Criar commit**
+- [x] **Step 5: Criar commit**
 
 ```bash
 git add app/services/bracelet_loss.py tests/test_bracelet_loss_service.py
@@ -547,7 +547,7 @@ git commit -m "serialize concurrent Bracelet losses"
 - Consumes: pré-leitura e locks da Task 2.
 - Produces: `ConflitoPerdaBracelet` e revalidação de `child_id`.
 
-- [ ] **Step 1: Adicionar teste concorrente determinístico**
+- [x] **Step 1: Adicionar teste concorrente determinístico**
 
 Em `tests/test_bracelet_loss_service.py`, adicionar imports:
 
@@ -665,7 +665,7 @@ def test_rejeita_mudanca_concorrente_do_vinculo() -> None:
     asyncio.run(executar_mudanca_concorrente_de_vinculo())
 ```
 
-- [ ] **Step 2: Executar e confirmar RED**
+- [x] **Step 2: Executar e confirmar RED**
 
 ```bash
 set -a
@@ -679,7 +679,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest \
 Resultado esperado: falha na coleta porque `ConflitoPerdaBracelet` ainda não
 existe.
 
-- [ ] **Step 3: Implementar exceção e revalidação**
+- [x] **Step 3: Implementar exceção e revalidação**
 
 Em `app/services/bracelet_loss.py`, importar `BraceletStatus`, adicionar:
 
@@ -700,7 +700,7 @@ adicionar:
             raise ConflitoPerdaBracelet
 ```
 
-- [ ] **Step 4: Executar GREEN, arquivo focado e Ruff**
+- [x] **Step 4: Executar GREEN, arquivo focado e Ruff**
 
 ```bash
 set -a
@@ -714,7 +714,7 @@ poetry run ruff check \
 
 Resultado esperado: `8 passed` e Ruff limpo.
 
-- [ ] **Step 5: Criar commit**
+- [x] **Step 5: Criar commit**
 
 ```bash
 git add app/services/bracelet_loss.py tests/test_bracelet_loss_service.py
@@ -731,7 +731,7 @@ git commit -m "reject concurrent Bracelet link changes"
 - Consumes: comportamento verificado nas Tasks 1 a 3.
 - Produces: estado atual documentado sem antecipar troca ou HTTP.
 
-- [ ] **Step 1: Atualizar o estado implementado**
+- [x] **Step 1: Atualizar o estado implementado**
 
 Depois dos itens do serviço de ativação em `docs/PROJECT_CONTEXT.md`, adicionar:
 
@@ -753,12 +753,12 @@ A troca planejada, assim como endpoints, schemas e autorização, ainda não foi
 implementada e exige novo recorte técnico aprovado.
 ```
 
-- [ ] **Step 2: Marcar somente os checkboxes de passos como concluídos**
+- [x] **Step 2: Marcar somente os checkboxes de passos como concluídos**
 
 Marcar os 23 checkboxes deste plano como concluídos, preservando exemplos e
 texto histórico.
 
-- [ ] **Step 3: Executar suíte completa PostgreSQL**
+- [x] **Step 3: Executar suíte completa PostgreSQL**
 
 ```bash
 set -a
@@ -769,7 +769,7 @@ TEST_DATABASE_URL="$DATABASE_URL" poetry run python -m pytest -v
 
 Resultado esperado: `78 passed`, sem skips ou warnings inesperados.
 
-- [ ] **Step 4: Executar Ruff global**
+- [x] **Step 4: Executar Ruff global**
 
 ```bash
 poetry run ruff check .
@@ -777,7 +777,7 @@ poetry run ruff check .
 
 Resultado esperado: `All checks passed!`.
 
-- [ ] **Step 5: Confirmar ausência de mudança no schema**
+- [x] **Step 5: Confirmar ausência de mudança no schema**
 
 ```bash
 set -a
@@ -789,7 +789,7 @@ poetry run alembic current
 
 Resultado esperado: `No new upgrade operations detected.` e `0003 (head)`.
 
-- [ ] **Step 6: Revisar escopo e Git**
+- [x] **Step 6: Revisar escopo e Git**
 
 ```bash
 git diff --check
@@ -800,7 +800,7 @@ git diff --name-only aac5bcb..HEAD
 Resultado esperado: serviço, teste, contexto e plano; nenhuma migration,
 entidade, endpoint, schema ou alteração no serviço de ativação.
 
-- [ ] **Step 7: Criar commit documental**
+- [x] **Step 7: Criar commit documental**
 
 ```bash
 git add \
@@ -809,7 +809,7 @@ git add \
 git commit -m "document Bracelet loss service"
 ```
 
-- [ ] **Step 8: Apresentar e parar**
+- [x] **Step 8: Apresentar e parar**
 
 Informar arquivos, testes, Ruff, Alembic, revisão e limites de escopo. Parar e
 aguardar aprovação explícita para a troca planejada ou qualquer outro recorte.
