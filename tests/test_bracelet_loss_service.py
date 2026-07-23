@@ -2,6 +2,7 @@ import asyncio
 import os
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -215,6 +216,37 @@ async def executar_prova_da_ordem_dos_locks() -> None:
 
 async def executar_perdas_concorrentes() -> None:
     tarefas: list[asyncio.Task[str]] = []
+    leituras_sem_lock = 0
+    duas_leituras_sem_lock = asyncio.Event()
+
+    class SessaoComBarreira:
+        def __init__(self, sessao: Any) -> None:
+            self._sessao = sessao
+
+        def begin(self) -> Any:
+            return self._sessao.begin()
+
+        async def execute(self, statement: Any) -> Any:
+            return await self._sessao.execute(statement)
+
+        async def scalar(self, statement: Any) -> Any:
+            nonlocal leituras_sem_lock
+
+            resultado = await self._sessao.scalar(statement)
+            consulta = " ".join(str(statement).split())
+            if (
+                "FROM bracelets" in consulta
+                and "FOR UPDATE" not in consulta
+            ):
+                leituras_sem_lock += 1
+                if leituras_sem_lock == 2:
+                    duas_leituras_sem_lock.set()
+                await duas_leituras_sem_lock.wait()
+            return resultado
+
+        async def flush(self) -> None:
+            await self._sessao.flush()
+
     try:
         await limpar_tabelas()
         async with session_factory.begin() as sessao:
@@ -228,14 +260,11 @@ async def executar_perdas_concorrentes() -> None:
             await sessao.flush()
             bracelet_id = bracelet.id
 
-        inicio = asyncio.Event()
-
         async def tentar_perda() -> str:
-            await inicio.wait()
             async with session_factory() as sessao:
                 try:
                     await marcar_bracelet_como_perdida(
-                        sessao,
+                        SessaoComBarreira(sessao),
                         bracelet_id,
                     )
                 except TransicaoBraceletInvalida:
@@ -246,8 +275,6 @@ async def executar_perdas_concorrentes() -> None:
             asyncio.create_task(tentar_perda()),
             asyncio.create_task(tentar_perda()),
         ]
-        await asyncio.sleep(0)
-        inicio.set()
         resultados = await asyncio.gather(*tarefas)
 
         assert resultados.count("perdida") == 1
