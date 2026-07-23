@@ -2,13 +2,15 @@ import asyncio
 import os
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from time import monotonic
 from typing import Any
 from uuid import uuid4
 
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import delete, event
+from sqlalchemy import delete, event, select, text, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import engine, session_factory
 from app.models import (
@@ -18,6 +20,7 @@ from app.models import (
     TransicaoBraceletInvalida,
 )
 from app.services.bracelet_loss import (
+    ConflitoPerdaBracelet,
     RecursoPerdaNaoEncontrado,
     marcar_bracelet_como_perdida,
 )
@@ -305,3 +308,107 @@ def test_bloqueia_child_antes_de_bracelet() -> None:
 @requer_banco_de_teste
 def test_serializa_duas_perdas_da_mesma_bracelet() -> None:
     asyncio.run(executar_perdas_concorrentes())
+
+
+async def aguardar_espera_por_lock(
+    backend_pid: int,
+    tarefa: asyncio.Task[Bracelet],
+) -> bool:
+    limite = monotonic() + 5
+    while monotonic() < limite:
+        if tarefa.done():
+            return False
+        async with session_factory() as monitor:
+            esperando = await monitor.scalar(
+                text(
+                    "SELECT wait_event_type = 'Lock' "
+                    "FROM pg_stat_activity WHERE pid = :pid",
+                ),
+                {"pid": backend_pid},
+            )
+        if esperando is True:
+            return True
+        await asyncio.sleep(0.01)
+    return False
+
+
+async def executar_mudanca_concorrente_de_vinculo() -> None:
+    tarefa: asyncio.Task[Bracelet] | None = None
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child_inicial = Child()
+            child_nova = Child()
+            bracelet = Bracelet(
+                status=BraceletStatus.ATIVA,
+                child=child_inicial,
+                activated_at=ATIVACAO,
+            )
+            sessao.add_all([child_inicial, child_nova, bracelet])
+            await sessao.flush()
+            child_inicial_id = child_inicial.id
+            child_nova_id = child_nova.id
+            bracelet_id = bracelet.id
+
+        async with (
+            session_factory() as bloqueadora,
+            engine.connect() as conexao_servico,
+        ):
+            backend_pid = await conexao_servico.scalar(
+                text("SELECT pg_backend_pid()"),
+            )
+            assert backend_pid is not None
+            await conexao_servico.rollback()
+
+            async with AsyncSession(
+                bind=conexao_servico,
+                expire_on_commit=False,
+            ) as servico:
+                async with bloqueadora.begin():
+                    await bloqueadora.scalar(
+                        select(Child)
+                        .where(Child.id == child_inicial_id)
+                        .with_for_update(),
+                    )
+                    tarefa = asyncio.create_task(
+                        marcar_bracelet_como_perdida(
+                            servico,
+                            bracelet_id,
+                        ),
+                    )
+                    assert await aguardar_espera_por_lock(
+                        backend_pid,
+                        tarefa,
+                    )
+                    async with session_factory.begin() as mutadora:
+                        await mutadora.execute(
+                            update(Bracelet)
+                            .where(Bracelet.id == bracelet_id)
+                            .values(child_id=child_nova_id),
+                        )
+
+                with pytest.raises(ConflitoPerdaBracelet) as erro:
+                    await tarefa
+
+        assert str(child_inicial_id) not in str(erro.value)
+        assert str(child_nova_id) not in str(erro.value)
+        assert str(bracelet_id) not in str(erro.value)
+        async with session_factory() as sessao:
+            persistida = await sessao.get(Bracelet, bracelet_id)
+        assert persistida is not None
+        assert persistida.status is BraceletStatus.ATIVA
+        assert persistida.child_id == child_nova_id
+        assert persistida.activated_at == ATIVACAO
+        assert persistida.revoked_at is None
+    finally:
+        if tarefa is not None:
+            if not tarefa.done():
+                tarefa.cancel()
+            await asyncio.gather(tarefa, return_exceptions=True)
+        await limpar_tabelas()
+        await engine.dispose()
+
+
+@requer_banco_de_teste
+def test_rejeita_mudanca_concorrente_do_vinculo() -> None:
+    asyncio.run(executar_mudanca_concorrente_de_vinculo())

@@ -4,7 +4,12 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Bracelet, Child
+from app.models import Bracelet, BraceletStatus, Child
+
+
+class ConflitoPerdaBracelet(ValueError):
+    def __init__(self) -> None:
+        super().__init__("Vínculo da pulseira mudou durante a operação")
 
 
 class RecursoPerdaNaoEncontrado(LookupError):
@@ -44,6 +49,12 @@ async def marcar_bracelet_como_perdida(
         )
         if bracelet is None:
             raise RecursoPerdaNaoEncontrado
+
+        if (
+            bracelet.status is BraceletStatus.ATIVA
+            and bracelet.child_id != child_id_inicial
+        ):
+            raise ConflitoPerdaBracelet
 
         bracelet.marcar_como_perdida(datetime.now(UTC))
         await sessao.flush()
