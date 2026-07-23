@@ -40,7 +40,9 @@ async def trocar_bracelet(
         child = None
         if child_id_inicial is not None:
             child = await sessao.scalar(
-                select(Child).where(Child.id == child_id_inicial),
+                select(Child)
+                .where(Child.id == child_id_inicial)
+                .with_for_update(),
             )
 
         pulseiras: dict[UUID, Bracelet] = {}
@@ -48,7 +50,9 @@ async def trocar_bracelet(
             (bracelet_anterior_id, bracelet_nova_id),
         ):
             bracelet = await sessao.scalar(
-                select(Bracelet).where(Bracelet.id == bracelet_id),
+                select(Bracelet)
+                .where(Bracelet.id == bracelet_id)
+                .with_for_update(),
             )
             if bracelet is not None:
                 pulseiras[bracelet_id] = bracelet
@@ -61,8 +65,8 @@ async def trocar_bracelet(
 
         anterior = pulseiras[bracelet_anterior_id]
         nova = pulseiras[bracelet_nova_id]
-        instante = datetime.now(UTC)
 
+        instante = datetime.now(UTC)
         anterior.desvincular(instante)
         if child is None:
             raise RecursoTrocaNaoEncontrado

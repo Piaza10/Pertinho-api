@@ -2,12 +2,14 @@ import asyncio
 import os
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import delete, select
+from sqlalchemy import delete, event, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import engine, session_factory
 from app.models import (
@@ -285,6 +287,181 @@ async def executar_estado_novo_invalido(status: BraceletStatus) -> None:
     finally:
         await limpar_tabelas()
         await engine.dispose()
+
+
+async def executar_prova_da_ordem_dos_locks() -> None:
+    locks: list[tuple[str, object]] = []
+
+    def registrar_lock(
+        _conexao: object,
+        _cursor: object,
+        statement: str,
+        parametros: object,
+        _contexto: object,
+        _executemany: bool,
+    ) -> None:
+        normalizada = " ".join(statement.split())
+        if "FOR UPDATE" not in normalizada:
+            return
+        if isinstance(parametros, tuple) and parametros:
+            primeiro_parametro: object = parametros[0]
+        else:
+            primeiro_parametro = parametros
+        locks.append((normalizada, primeiro_parametro))
+
+    anterior_id = UUID(int=2)
+    nova_id = UUID(int=1)
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child = Child()
+            anterior = Bracelet(
+                id=anterior_id,
+                status=BraceletStatus.ATIVA,
+                child=child,
+                activated_at=ATIVACAO_ANTERIOR,
+            )
+            nova = Bracelet(id=nova_id)
+            sessao.add_all([child, anterior, nova])
+
+        event.listen(
+            engine.sync_engine,
+            "before_cursor_execute",
+            registrar_lock,
+        )
+        try:
+            async with session_factory() as sessao:
+                await trocar_bracelet(sessao, anterior_id, nova_id)
+        finally:
+            event.remove(
+                engine.sync_engine,
+                "before_cursor_execute",
+                registrar_lock,
+            )
+
+        assert len(locks) == 3
+        assert "FROM children" in locks[0][0]
+        assert "FROM bracelets" in locks[1][0]
+        assert UUID(str(locks[1][1])) == nova_id
+        assert "FROM bracelets" in locks[2][0]
+        assert UUID(str(locks[2][1])) == anterior_id
+    finally:
+        await limpar_tabelas()
+        await engine.dispose()
+
+
+async def executar_trocas_concorrentes() -> None:
+    tarefas: list[asyncio.Task[str]] = []
+    duas_leituras_da_anterior = asyncio.Event()
+    leituras_da_anterior = 0
+    anterior_id = UUID(int=1)
+    novas_ids = (UUID(int=2), UUID(int=3))
+
+    class SessaoComBarreira:
+        def __init__(self, sessao: AsyncSession) -> None:
+            self._sessao = sessao
+
+        def begin(self) -> Any:
+            return self._sessao.begin()
+
+        async def execute(self, statement: Any) -> Any:
+            return await self._sessao.execute(statement)
+
+        async def scalar(self, statement: Any) -> Any:
+            nonlocal leituras_da_anterior
+            resultado = await self._sessao.scalar(statement)
+            sql = str(statement)
+            if (
+                "FROM bracelets" in sql
+                and "FOR UPDATE" not in sql
+                and leituras_da_anterior < 2
+            ):
+                leituras_da_anterior += 1
+                if leituras_da_anterior == 2:
+                    duas_leituras_da_anterior.set()
+                async with asyncio.timeout(5):
+                    await duas_leituras_da_anterior.wait()
+            return resultado
+
+        async def flush(self) -> None:
+            await self._sessao.flush()
+
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child = Child()
+            anterior = Bracelet(
+                id=anterior_id,
+                status=BraceletStatus.ATIVA,
+                child=child,
+                activated_at=ATIVACAO_ANTERIOR,
+            )
+            novas = [Bracelet(id=bracelet_id) for bracelet_id in novas_ids]
+            sessao.add_all([child, anterior, *novas])
+
+        inicio = asyncio.Event()
+
+        async def tentar_troca(nova_id: UUID) -> str:
+            await inicio.wait()
+            async with session_factory() as sessao:
+                try:
+                    await trocar_bracelet(
+                        SessaoComBarreira(sessao),
+                        anterior_id,
+                        nova_id,
+                    )
+                except TransicaoBraceletInvalida:
+                    return "rejeitada"
+                return "trocada"
+
+        tarefas = [
+            asyncio.create_task(tentar_troca(nova_id))
+            for nova_id in novas_ids
+        ]
+        inicio.set()
+        async with asyncio.timeout(5):
+            resultados = await asyncio.gather(*tarefas)
+
+        assert resultados.count("trocada") == 1
+        assert resultados.count("rejeitada") == 1
+
+        async with session_factory() as sessao:
+            anterior_persistida = await sessao.get(Bracelet, anterior_id)
+            novas_persistidas = [
+                await sessao.get(Bracelet, nova_id)
+                for nova_id in novas_ids
+            ]
+
+        assert anterior_persistida is not None
+        assert anterior_persistida.status is BraceletStatus.DESVINCULADA
+        assert sum(
+            bracelet is not None
+            and bracelet.status is BraceletStatus.ATIVA
+            for bracelet in novas_persistidas
+        ) == 1
+        assert sum(
+            bracelet is not None
+            and bracelet.status is BraceletStatus.ESTOQUE
+            for bracelet in novas_persistidas
+        ) == 1
+    finally:
+        for tarefa in tarefas:
+            if not tarefa.done():
+                tarefa.cancel()
+        if tarefas:
+            await asyncio.gather(*tarefas, return_exceptions=True)
+        await limpar_tabelas()
+        await engine.dispose()
+
+
+@requer_banco_de_teste
+def test_bloqueia_child_e_bracelets_em_ordem_global() -> None:
+    asyncio.run(executar_prova_da_ordem_dos_locks())
+
+
+@requer_banco_de_teste
+def test_serializa_duas_trocas_da_mesma_bracelet() -> None:
+    asyncio.run(executar_trocas_concorrentes())
 
 
 @requer_banco_de_teste
