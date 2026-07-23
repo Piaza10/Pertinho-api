@@ -2,13 +2,14 @@ import asyncio
 import os
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from time import monotonic
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import delete, event, select
+from sqlalchemy import delete, event, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import engine, session_factory
@@ -20,6 +21,7 @@ from app.models import (
 )
 from app.services.bracelet_replacement import (
     BraceletsTrocaIguais,
+    ConflitoTrocaBracelet,
     RecursoTrocaNaoEncontrado,
     trocar_bracelet,
 )
@@ -410,7 +412,10 @@ async def executar_trocas_concorrentes() -> None:
                         anterior_id,
                         nova_id,
                     )
-                except TransicaoBraceletInvalida:
+                except (
+                    ConflitoTrocaBracelet,
+                    TransicaoBraceletInvalida,
+                ):
                     return "rejeitada"
                 return "trocada"
 
@@ -452,6 +457,131 @@ async def executar_trocas_concorrentes() -> None:
             await asyncio.gather(*tarefas, return_exceptions=True)
         await limpar_tabelas()
         await engine.dispose()
+
+
+async def aguardar_espera_por_lock(
+    backend_pid: int,
+    tarefa: asyncio.Task[tuple[Bracelet, Bracelet]],
+) -> bool:
+    limite = monotonic() + 5
+    while monotonic() < limite:
+        if tarefa.done():
+            return False
+        async with session_factory() as monitor:
+            esperando = await monitor.scalar(
+                text(
+                    "SELECT wait_event_type = 'Lock' "
+                    "FROM pg_stat_activity WHERE pid = :pid",
+                ),
+                {"pid": backend_pid},
+            )
+        if esperando is True:
+            return True
+        await asyncio.sleep(0.01)
+    return False
+
+
+async def executar_mudanca_concorrente_de_vinculo() -> None:
+    tarefa: asyncio.Task[tuple[Bracelet, Bracelet]] | None = None
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child_inicial = Child()
+            child_nova = Child()
+            anterior = Bracelet(
+                status=BraceletStatus.ATIVA,
+                child=child_inicial,
+                activated_at=ATIVACAO_ANTERIOR,
+            )
+            nova = Bracelet()
+            sessao.add_all([child_inicial, child_nova, anterior, nova])
+            await sessao.flush()
+            child_inicial_id = child_inicial.id
+            child_nova_id = child_nova.id
+            anterior_id = anterior.id
+            nova_id = nova.id
+            anterior_token = anterior.public_token
+            nova_token = nova.public_token
+
+        async with (
+            session_factory() as bloqueadora,
+            engine.connect() as conexao_servico,
+        ):
+            backend_pid = await conexao_servico.scalar(
+                text("SELECT pg_backend_pid()"),
+            )
+            assert backend_pid is not None
+            await conexao_servico.rollback()
+
+            async with AsyncSession(
+                bind=conexao_servico,
+                expire_on_commit=False,
+            ) as servico:
+                async with bloqueadora.begin():
+                    await bloqueadora.scalar(
+                        select(Child)
+                        .where(Child.id == child_inicial_id)
+                        .with_for_update(),
+                    )
+                    tarefa = asyncio.create_task(
+                        trocar_bracelet(
+                            servico,
+                            anterior_id,
+                            nova_id,
+                        ),
+                    )
+                    async with asyncio.timeout(5):
+                        assert await aguardar_espera_por_lock(
+                            backend_pid,
+                            tarefa,
+                        )
+                    async with session_factory.begin() as mutadora:
+                        await mutadora.execute(
+                            update(Bracelet)
+                            .where(Bracelet.id == anterior_id)
+                            .values(child_id=child_nova_id),
+                        )
+
+                with pytest.raises(ConflitoTrocaBracelet) as erro:
+                    async with asyncio.timeout(5):
+                        await tarefa
+
+        mensagem = str(erro.value)
+        assert mensagem == (
+            "Vínculo da pulseira anterior mudou durante a operação"
+        )
+        assert str(child_inicial_id) not in mensagem
+        assert str(child_nova_id) not in mensagem
+        assert str(anterior_id) not in mensagem
+        assert str(nova_id) not in mensagem
+        assert anterior_token not in mensagem
+        assert nova_token not in mensagem
+
+        async with session_factory() as sessao:
+            anterior_persistida = await sessao.get(Bracelet, anterior_id)
+            nova_persistida = await sessao.get(Bracelet, nova_id)
+        assert anterior_persistida is not None
+        assert anterior_persistida.status is BraceletStatus.ATIVA
+        assert anterior_persistida.child_id == child_nova_id
+        assert anterior_persistida.activated_at == ATIVACAO_ANTERIOR
+        assert anterior_persistida.revoked_at is None
+        assert nova_persistida is not None
+        assert nova_persistida.status is BraceletStatus.ESTOQUE
+        assert nova_persistida.child_id is None
+        assert nova_persistida.activated_at is None
+        assert nova_persistida.revoked_at is None
+    finally:
+        if tarefa is not None:
+            if not tarefa.done():
+                tarefa.cancel()
+            await asyncio.gather(tarefa, return_exceptions=True)
+        await limpar_tabelas()
+        await engine.dispose()
+
+
+@requer_banco_de_teste
+def test_rejeita_mudanca_concorrente_do_vinculo() -> None:
+    asyncio.run(executar_mudanca_concorrente_de_vinculo())
 
 
 @requer_banco_de_teste

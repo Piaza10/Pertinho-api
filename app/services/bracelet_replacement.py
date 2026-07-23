@@ -17,6 +17,13 @@ class BraceletsTrocaIguais(ValueError):
         super().__init__("As pulseiras da troca devem ser distintas")
 
 
+class ConflitoTrocaBracelet(ValueError):
+    def __init__(self) -> None:
+        super().__init__(
+            "Vínculo da pulseira anterior mudou durante a operação",
+        )
+
+
 async def trocar_bracelet(
     sessao: AsyncSession,
     bracelet_anterior_id: UUID,
@@ -65,6 +72,9 @@ async def trocar_bracelet(
 
         anterior = pulseiras[bracelet_anterior_id]
         nova = pulseiras[bracelet_nova_id]
+
+        if anterior.child_id != child_id_inicial:
+            raise ConflitoTrocaBracelet
 
         instante = datetime.now(UTC)
         anterior.desvincular(instante)
