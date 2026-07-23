@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import delete
+from sqlalchemy import delete, event
 
 from app.database import engine, session_factory
 from app.models import (
@@ -160,3 +160,121 @@ def test_preserva_transicao_invalida_e_estado_persistido(
     status: BraceletStatus,
 ) -> None:
     asyncio.run(executar_estado_invalido(status))
+
+
+async def executar_prova_da_ordem_dos_locks() -> None:
+    consultas_com_lock: list[str] = []
+
+    def registrar_consulta(
+        _conexao: object,
+        _cursor: object,
+        statement: str,
+        _parametros: object,
+        _contexto: object,
+        _executemany: bool,
+    ) -> None:
+        normalizada = " ".join(statement.split())
+        if "FOR UPDATE" in normalizada:
+            consultas_com_lock.append(normalizada)
+
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child = Child()
+            bracelet = Bracelet(
+                status=BraceletStatus.ATIVA,
+                child=child,
+                activated_at=ATIVACAO,
+            )
+            sessao.add_all([child, bracelet])
+            await sessao.flush()
+            bracelet_id = bracelet.id
+
+        event.listen(
+            engine.sync_engine,
+            "before_cursor_execute",
+            registrar_consulta,
+        )
+        try:
+            async with session_factory() as sessao:
+                await marcar_bracelet_como_perdida(sessao, bracelet_id)
+        finally:
+            event.remove(
+                engine.sync_engine,
+                "before_cursor_execute",
+                registrar_consulta,
+            )
+
+        assert len(consultas_com_lock) == 2
+        assert "FROM children" in consultas_com_lock[0]
+        assert "FROM bracelets" in consultas_com_lock[1]
+    finally:
+        await limpar_tabelas()
+        await engine.dispose()
+
+
+async def executar_perdas_concorrentes() -> None:
+    tarefas: list[asyncio.Task[str]] = []
+    try:
+        await limpar_tabelas()
+        async with session_factory.begin() as sessao:
+            child = Child()
+            bracelet = Bracelet(
+                status=BraceletStatus.ATIVA,
+                child=child,
+                activated_at=ATIVACAO,
+            )
+            sessao.add_all([child, bracelet])
+            await sessao.flush()
+            bracelet_id = bracelet.id
+
+        inicio = asyncio.Event()
+
+        async def tentar_perda() -> str:
+            await inicio.wait()
+            async with session_factory() as sessao:
+                try:
+                    await marcar_bracelet_como_perdida(
+                        sessao,
+                        bracelet_id,
+                    )
+                except TransicaoBraceletInvalida:
+                    return "invalida"
+                return "perdida"
+
+        tarefas = [
+            asyncio.create_task(tentar_perda()),
+            asyncio.create_task(tentar_perda()),
+        ]
+        await asyncio.sleep(0)
+        inicio.set()
+        resultados = await asyncio.gather(*tarefas)
+
+        assert resultados.count("perdida") == 1
+        assert resultados.count("invalida") == 1
+
+        async with session_factory() as sessao:
+            persistida = await sessao.get(Bracelet, bracelet_id)
+        assert persistida is not None
+        assert persistida.status is BraceletStatus.PERDIDA
+        assert persistida.child_id is None
+        assert persistida.activated_at == ATIVACAO
+        assert persistida.revoked_at is not None
+    finally:
+        for tarefa in tarefas:
+            if not tarefa.done():
+                tarefa.cancel()
+        if tarefas:
+            await asyncio.gather(*tarefas, return_exceptions=True)
+        await limpar_tabelas()
+        await engine.dispose()
+
+
+@requer_banco_de_teste
+def test_bloqueia_child_antes_de_bracelet() -> None:
+    asyncio.run(executar_prova_da_ordem_dos_locks())
+
+
+@requer_banco_de_teste
+def test_serializa_duas_perdas_da_mesma_bracelet() -> None:
+    asyncio.run(executar_perdas_concorrentes())

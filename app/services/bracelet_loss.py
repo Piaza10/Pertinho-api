@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Bracelet
+from app.models import Bracelet, Child
 
 
 class RecursoPerdaNaoEncontrado(LookupError):
@@ -27,8 +27,20 @@ async def marcar_bracelet_como_perdida(
         if pre_leitura is None:
             raise RecursoPerdaNaoEncontrado
 
+        _, child_id_inicial = pre_leitura
+        if child_id_inicial is not None:
+            child = await sessao.scalar(
+                select(Child)
+                .where(Child.id == child_id_inicial)
+                .with_for_update(),
+            )
+            if child is None:
+                raise RecursoPerdaNaoEncontrado
+
         bracelet = await sessao.scalar(
-            select(Bracelet).where(Bracelet.id == bracelet_id),
+            select(Bracelet)
+            .where(Bracelet.id == bracelet_id)
+            .with_for_update(),
         )
         if bracelet is None:
             raise RecursoPerdaNaoEncontrado
